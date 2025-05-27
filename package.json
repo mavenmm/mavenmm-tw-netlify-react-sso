@@ -55,6 +55,9 @@
   ],
   "author": "Maven Marketing",
   "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/your-username/mavenmm-tw-netlify-react-sso.git"

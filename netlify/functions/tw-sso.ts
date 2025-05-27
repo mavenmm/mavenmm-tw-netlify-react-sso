@@ -1,5 +1,5 @@
 import type { Handler } from "@netlify/functions";
-import { validate } from "mavenmm-tw-netlify-react-sso/server";
+import { validate } from "@mavenmm/teamwork-netlify-react-sso/server";
 
 // Define the validation result type
 interface ValidationResult {
