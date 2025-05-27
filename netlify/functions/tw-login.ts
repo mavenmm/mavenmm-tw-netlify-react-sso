@@ -30,8 +30,19 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Get the authorization code from headers
-    const code = event.headers.code;
+    // Get the authorization code from request body
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || "{}");
+    } catch (error) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: "Invalid JSON in request body" }),
+      };
+    }
+
+    const code = requestBody.code;
 
     if (!code) {
       return {

@@ -21,8 +21,8 @@ export function useTeamworkSSO() {
         method: "POST", // Netlify handler expects POST
         headers: {
           "Content-Type": "application/json",
-          code,
         },
+        body: JSON.stringify({ code }), // Send code in body
         credentials: "include" as RequestCredentials, // Important for cookies!
       };
 
