@@ -43,71 +43,70 @@ const handler: Handler = async (event) => {
 
     // Exchange code for access token with Teamwork
     const tokenResponse = await fetch(
-      `https://${process.env.TEAMWORK_BASE_URL}/launchpad/v1/token.json`,
+      "https://www.teamwork.com/launchpad/v1/token.json",
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
+          Origin: origin, // Required if app has allowed origins
         },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          client_id: process.env.TEAMWORK_CLIENT_ID!,
-          client_secret: process.env.TEAMWORK_CLIENT_SECRET!,
+        body: JSON.stringify({
           code: code,
-          redirect_uri: process.env.TEAMWORK_REDIRECT_URI!,
+          client_id: process.env.VITE_TEAMWORK_CLIENT_ID!,
+          client_secret: process.env.VITE_TEAMWORK_CLIENT_SECRET!,
+          redirect_uri: process.env.VITE_TEAMWORK_REDIRECT_URI!,
         }),
       }
     );
 
     if (!tokenResponse.ok) {
-      const error = await tokenResponse.text();
-      console.error("Token exchange failed:", error);
+      let errorText;
+      let errorJson;
+
+      try {
+        errorText = await tokenResponse.text();
+        errorJson = JSON.parse(errorText);
+      } catch (e) {
+        errorJson = null;
+      }
+
       return {
         statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ error: "Failed to exchange code for token" }),
+        body: JSON.stringify({
+          error: "Failed to exchange code for token",
+          details: {
+            status: tokenResponse.status,
+            statusText: tokenResponse.statusText,
+            response: errorText,
+            parsedError: errorJson,
+          },
+        }),
       };
     }
 
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
-    // Get user info from Teamwork
-    const userResponse = await fetch(
-      `https://${process.env.TEAMWORK_BASE_URL}/launchpad/v1/me.json`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (!userResponse.ok) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: "Failed to get user info" }),
-      };
-    }
-
-    const userData = await userResponse.json();
-
-    // Transform to your User format
+    // Transform user data from token response to your User format
     const twUser = {
-      id: userData.person.id,
-      firstName: userData.person.firstName,
-      lastName: userData.person.lastName,
-      email: userData.person.emailAddress,
-      avatar: userData.person.avatar || "",
+      id: tokenData.user.id,
+      firstName: tokenData.user.firstName,
+      lastName: tokenData.user.lastName,
+      email: tokenData.user.email,
+      avatar: tokenData.user.avatar || "",
       company: {
-        id: userData.account.id,
-        name: userData.account.name,
-        logo: userData.account.logo || "",
+        id: tokenData.user.company.id,
+        name: tokenData.user.company.name,
+        logo: tokenData.user.company.logo || "",
       },
     };
 
-    // Set auth cookie
-    const cookieValue = `maven_auth_token=${accessToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
+    // Set auth cookie - make Secure flag conditional for development
+    const isProduction =
+      process.env.NODE_ENV === "production" || !origin.includes("localhost");
+    const secureFlag = isProduction ? "Secure; " : "";
+    const cookieValue = `maven_auth_token=${accessToken}; Path=/; HttpOnly; ${secureFlag}SameSite=Lax; Max-Age=86400`;
 
     return {
       statusCode: 200,

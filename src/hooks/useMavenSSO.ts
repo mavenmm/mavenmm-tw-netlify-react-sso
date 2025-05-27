@@ -18,23 +18,47 @@ export function useMavenSSO() {
   const login = async (code: string) => {
     try {
       const options = {
+        method: "POST", // Netlify handler expects POST
         headers: {
+          "Content-Type": "application/json",
           code,
         },
+        credentials: "include" as RequestCredentials, // Important for cookies!
       };
 
-      console.log({
-        options,
-      });
+      console.log("🚀 Attempting login with options:", options);
+
       // Record the code in local storage to ensure we don't reuse it after this login
       localStorage.setItem("prevCode", JSON.stringify(code));
       const res = await fetch(`/api/tw-login`, options);
+
+      console.log("📡 Response status:", res.status);
+      console.log(
+        "📡 Response headers:",
+        Object.fromEntries(res.headers.entries())
+      );
+
+      if (!res.ok) {
+        // Try to get the error details from the response
+        let errorDetails;
+        try {
+          errorDetails = await res.json();
+        } catch {
+          errorDetails = await res.text();
+        }
+        console.error("❌ Login failed with details:", errorDetails);
+        throw new Error(
+          `Login failed with status: ${res.status} - ${JSON.stringify(
+            errorDetails
+          )}`
+        );
+      }
 
       const data = await res.json();
 
       const { twUser } = data;
 
-      console.log("Fetching dashboard user data for ID:", twUser.id);
+      console.log("✅ Login successful! User data:", twUser);
 
       setUser(twUser);
 
@@ -43,7 +67,7 @@ export function useMavenSSO() {
 
       return { twUser };
     } catch (err) {
-      console.error("Error caught in useMavenSSO.ts:", err);
+      console.error("💥 Error caught in useMavenSSO.ts:", err);
       throw new Error("Failed to log in");
     }
   };
