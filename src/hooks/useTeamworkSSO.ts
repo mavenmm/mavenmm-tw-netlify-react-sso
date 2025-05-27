@@ -26,17 +26,9 @@ export function useTeamworkSSO() {
         credentials: "include" as RequestCredentials, // Important for cookies!
       };
 
-      console.log("🚀 Attempting login with options:", options);
-
       // Record the code in local storage to ensure we don't reuse it after this login
       localStorage.setItem("prevCode", JSON.stringify(code));
       const res = await fetch(`/api/tw-login`, options);
-
-      console.log("📡 Response status:", res.status);
-      console.log(
-        "📡 Response headers:",
-        Object.fromEntries(res.headers.entries())
-      );
 
       if (!res.ok) {
         // Try to get the error details from the response
@@ -46,7 +38,6 @@ export function useTeamworkSSO() {
         } catch {
           errorDetails = await res.text();
         }
-        console.error("❌ Login failed with details:", errorDetails);
         throw new Error(
           `Login failed with status: ${res.status} - ${JSON.stringify(
             errorDetails
@@ -58,16 +49,14 @@ export function useTeamworkSSO() {
 
       const { twUser } = data;
 
-      console.log("✅ Login successful! User data:", twUser);
-
       setUser(twUser);
+      setIsAuthenticated(true);
 
       // Record the user in local storage to ensure we don't reuse it after this login
       localStorage.setItem("prevUser", JSON.stringify(twUser));
 
       return { twUser };
     } catch (err) {
-      console.error("💥 Error caught in useTeamworkSSO.ts:", err);
       throw new Error("Failed to log in");
     }
   };
@@ -120,9 +109,6 @@ export function useTeamworkSSO() {
         if (response.ok) {
           const contentType = response.headers.get("content-type");
           if (!contentType || !contentType.includes("application/json")) {
-            console.warn(
-              "Auth check endpoint returned non-JSON response, assuming not authenticated"
-            );
             setIsAuthenticated(false);
             setUser(null);
             localStorage.removeItem("prevUser");
@@ -162,16 +148,11 @@ export function useTeamworkSSO() {
             localStorage.removeItem("prevUser");
           }
         } else {
-          console.warn(`Auth check failed with status: ${response.status}`);
           setIsAuthenticated(false);
           setUser(null);
           localStorage.removeItem("prevUser");
         }
       } catch (error) {
-        console.error("Error during auth check:", error);
-        console.warn(
-          "Auth check endpoint may not exist - assuming not authenticated"
-        );
         setIsAuthenticated(false);
         setUser(null);
         localStorage.removeItem("prevUser");
@@ -180,7 +161,24 @@ export function useTeamworkSSO() {
       }
     };
 
-    // Execute auth check with slight delay to ensure cookies are loaded
+    // Also sync initial state if we have cached user data
+    const syncInitialState = () => {
+      const prevUser = localStorage.getItem("prevUser");
+      if (prevUser) {
+        try {
+          const userData = JSON.parse(prevUser);
+          setUser(userData);
+          setIsAuthenticated(true);
+        } catch {
+          localStorage.removeItem("prevUser");
+        }
+      }
+    };
+
+    // Sync initial state first
+    syncInitialState();
+
+    // Then validate with server
     setTimeout(checkAuth, 100);
   }, []);
 
