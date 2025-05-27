@@ -72,22 +72,5 @@ export default function AuthProvider({
     }
   }, [code, user, loading, login]);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <>
-          {/* User is authenticated, show the children */}
-          {user && children}
-
-          {/* User is not authenticated and there's no code, show the login page */}
-          {!user && !code && <Login />}
-
-          {/* User is not authenticated and there's a code, processing login */}
-          {!user && code && <div>Authenticating...</div>}
-        </>
-      )}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
