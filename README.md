@@ -1,24 +1,24 @@
-# Maven Marketing SSO Package 🚀
+# Teamwork SSO Package 🚀
 
-A simple React package for Maven Marketing's SSO system using Teamwork authentication and Netlify Functions.
+A simple React package for Teamwork authentication using Vite+React+Netlify Functions with subdomain cookie sharing support.
 
 ## Installation
 
 ```bash
-npm install mavenmm-tw-netlify-react-sso @teamwork/login-button react-router-dom
+npm install @mavenmm/teamwork-netlify-react-sso @teamwork/login-button react-router-dom
 ```
 
 ## Available Exports
 
 ```tsx
 // React Components & Hooks
-import { AuthProvider, useAuthContext, useMavenSSO, Login } from 'mavenmm-tw-netlify-react-sso';
+import { AuthProvider, useAuthContext, useTeamworkSSO, Login } from '@mavenmm/teamwork-netlify-react-sso';
 
 // Middleware (for custom Netlify Functions)
-import { validate } from 'mavenmm-tw-netlify-react-sso';
+import { validate } from '@mavenmm/teamwork-netlify-react-sso';
 
 // Netlify Function Creators
-import { createLoginHandler, createLogoutHandler, createCheckAuthHandler } from 'mavenmm-tw-netlify-react-sso/netlify';
+import { createLoginHandler, createLogoutHandler, createCheckAuthHandler } from '@mavenmm/teamwork-netlify-react-sso/netlify';
 ```
 
 **Requirements:**
@@ -37,7 +37,7 @@ npm install --save-dev vite  # For Vite projects
 ```tsx
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider, useAuthContext } from 'mavenmm-tw-netlify-react-sso';
+import { AuthProvider, useAuthContext } from '@mavenmm/teamwork-netlify-react-sso';
 
 function App() {
   return (
@@ -85,10 +85,10 @@ function Dashboard() {
 **Option B: Using the hook directly**
 ```tsx
 import React from 'react';
-import { useMavenSSO, Login } from 'mavenmm-tw-netlify-react-sso';
+import { useTeamworkSSO, Login } from '@mavenmm/teamwork-netlify-react-sso';
 
 function App() {
-  const { user, loading, isAuthenticated, logout } = useMavenSSO();
+  const { user, loading, isAuthenticated, logout } = useTeamworkSSO();
 
   if (loading) {
     return <div>Loading...</div>;
@@ -109,11 +109,11 @@ function App() {
 
 ### 2. Netlify Functions (Backend)
 
-Copy the functions from `node_modules/mavenmm-tw-netlify-react-sso/netlify/functions/` to your `netlify/functions/` directory:
+Copy the functions from `node_modules/@mavenmm/teamwork-netlify-react-sso/netlify/functions/` to your `netlify/functions/` directory:
 
 ```bash
 # Copy the functions to your project
-cp -r node_modules/mavenmm-tw-netlify-react-sso/netlify/functions/* netlify/functions/
+cp -r node_modules/@mavenmm/teamwork-netlify-react-sso/netlify/functions/* netlify/functions/
 ```
 
 Or create them manually:
@@ -124,37 +124,57 @@ Or create them manually:
 ### 3. Environment Variables
 
 ```env
-# Teamwork OAuth credentials
+# Teamwork OAuth credentials (Server-side for Netlify Functions)
 TEAMWORK_CLIENT_ID=your_teamwork_client_id
 TEAMWORK_CLIENT_SECRET=your_teamwork_client_secret
-TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/callback
+TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/
 
-# For React app (Vite)
+# For React app (Client-side with Vite)
 VITE_TEAMWORK_CLIENT_ID=your_teamwork_client_id
-VITE_TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/callback
-# VITE_TEAMWORK_CLIENT_SECRET=your_teamwork_client_secret  # Optional: Only if needed for custom implementations
+VITE_TEAMWORK_CLIENT_SECRET=your_teamwork_client_secret
+VITE_TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/
+
+# Optional: Cookie domain for subdomain sharing
+VITE_COOKIE_DOMAIN=.mavenmm.com
 ```
+
+## Cookie Domain Configuration 🍪
+
+For subdomain sharing (e.g., sharing auth between `app.mavenmm.com` and `admin.mavenmm.com`):
+
+```bash
+# In your .env file
+VITE_COOKIE_DOMAIN=.mavenmm.com
+```
+
+This allows the authentication cookie to work across all `*.mavenmm.com` subdomains.
+
+**Behavior:**
+- **Localhost**: No domain set (works with any localhost port)
+- **Production with VITE_COOKIE_DOMAIN**: Cookie shared across subdomains
+- **Production without VITE_COOKIE_DOMAIN**: Cookie only works on exact domain
 
 ## Features
 
 - 🔐 **Teamwork OAuth** - Uses official Teamwork login button
 - 🍪 **Cookie-based Auth** - Secure authentication with HttpOnly cookies
-- 🌐 **Multi-domain Support** - Works across mavenmm.com subdomains  
+- 🌐 **Subdomain Support** - Configurable cookie sharing across subdomains
 - 🔄 **Auto-redirect** - Smart redirect handling between apps
 - 📱 **TypeScript** - Full type safety
 - ⚡ **Netlify Functions** - Ready-to-use serverless auth handlers
+- 🎯 **Vite Optimized** - Built specifically for Vite+React+Netlify stack
 
 ## Important Notes 📝
 
 **Router Requirement**: The `AuthProvider` uses React Router hooks (`useNavigate`, `useLocation`) and must be placed inside a Router context. Specifically, it should be inside a Route element, not as a direct child of `<Router>`.
 
-**Client Secret**: The `VITE_TEAMWORK_CLIENT_SECRET` is optional and should only be used for custom implementations. In the standard OAuth flow, the client secret is kept secure on the server-side (Netlify Functions) and never exposed to the frontend.
+**Environment Variables**: You need both client-side (`VITE_*`) and server-side variables. The client-side variables are for React components, and server-side variables are for Netlify Functions.
 
 ## API Reference
 
 ### React Components
 
-#### `useMavenSSO()`
+#### `useTeamworkSSO()`
 
 ```tsx
 const {
@@ -164,7 +184,7 @@ const {
   isAuthenticated, // boolean
   login,          // (code: string) => Promise<{twUser: User}>
   logout          // () => Promise<void>
-} = useMavenSSO();
+} = useTeamworkSSO();
 ```
 
 #### `<Login>`
@@ -178,15 +198,15 @@ const {
 #### `POST /api/tw-login`
 - **Headers**: `code` (OAuth authorization code)
 - **Response**: `{ twUser: User }`
-- **Sets**: `maven_auth_token` cookie
+- **Sets**: `tw_auth_token` cookie
 
 #### `GET /api/tw-logout`
 - **Response**: `{ success: true }`
-- **Clears**: `maven_auth_token` cookie
+- **Clears**: `tw_auth_token` cookie
 
 #### `GET /api/tw-check-auth`
 - **Response**: `{ authenticated: boolean, _id?: string }`
-- **Validates**: `maven_auth_token` cookie
+- **Validates**: `tw_auth_token` cookie
 
 ### Types
 

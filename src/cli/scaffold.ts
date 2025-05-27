@@ -4,7 +4,7 @@ import { writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 
 const templates = {
-  login: `import { createLoginHandler } from "mavenmm-tw-netlify-react-sso/netlify";
+  login: `import { createLoginHandler } from "@mavenmm/teamwork-netlify-react-sso/netlify";
 
 const config = {
   teamworkClientId: process.env.TEAMWORK_CLIENT_ID!,
@@ -21,7 +21,7 @@ const config = {
 export const handler = createLoginHandler(config);
 `,
 
-  logout: `import { createLogoutHandler } from "mavenmm-tw-netlify-react-sso/netlify";
+  logout: `import { createLogoutHandler } from "@mavenmm/teamwork-netlify-react-sso/netlify";
 
 const config = {
   teamworkClientId: process.env.TEAMWORK_CLIENT_ID!,
@@ -38,7 +38,7 @@ const config = {
 export const handler = createLogoutHandler(config);
 `,
 
-  checkAuth: `import { createCheckAuthHandler } from "mavenmm-tw-netlify-react-sso/netlify";
+  checkAuth: `import { createCheckAuthHandler } from "@mavenmm/teamwork-netlify-react-sso/netlify";
 
 const config = {
   teamworkClientId: process.env.TEAMWORK_CLIENT_ID!,
@@ -128,13 +128,13 @@ NODE_ENV=production
 
   readme: `# Teamwork SSO Integration
 
-This project uses the \`mavenmm-tw-netlify-react-sso\` package for Teamwork authentication.
+This project uses the \`@mavenmm/teamwork-netlify-react-sso\` package for Teamwork authentication.
 
 ## Setup
 
 1. **Install dependencies:**
    \`\`\`bash
-   npm install mavenmm-tw-netlify-react-sso
+   npm install @mavenmm/teamwork-netlify-react-sso
    \`\`\`
 
 2. **Configure environment variables:**
@@ -175,7 +175,7 @@ netlify dev
 ## Frontend Integration
 
 \`\`\`jsx
-import { AuthProvider, useTeamworkSSO, Login } from 'mavenmm-tw-netlify-react-sso';
+import { AuthProvider, useTeamworkSSO, Login } from '@mavenmm/teamwork-netlify-react-sso';
 
 function App() {
   return (
@@ -247,7 +247,7 @@ function scaffoldNetlifyFunctions() {
     writeFileSync("README.md", templates.readme);
   }
 
-  console.log("✅ Maven SSO scaffolded successfully!");
+  console.log("✅ Teamwork SSO scaffolded successfully!");
   console.log("📁 Created:");
   console.log("  - netlify/functions/tw-login.ts");
   console.log("  - netlify/functions/tw-logout.ts");

@@ -1,4 +1,4 @@
-// Main exports for Maven SSO package
+// Main exports for Teamwork SSO package
 export { useTeamworkSSO } from "./hooks/useTeamworkSSO";
 export { Login } from "./components/Login";
 
@@ -31,4 +31,4 @@ export type {
 // - tw-check-auth.ts - Validates authentication status
 
 // Server-side middleware is available at:
-// import { validate } from 'mavenmm-tw-netlify-react-sso/server'
+// import { validate } from '@mavenmm/teamwork-netlify-react-sso/server'

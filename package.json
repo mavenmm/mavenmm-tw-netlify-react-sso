@@ -1,7 +1,7 @@
 {
-  "name": "mavenmm-tw-netlify-react-sso",
+  "name": "@mavenmm/teamwork-netlify-react-sso",
   "version": "1.0.0",
-  "description": "Maven Marketing SSO system for React apps with Teamwork authentication and Netlify Functions",
+  "description": "SSO system for Vite+React+Netlify apps with Teamwork authentication and Netlify Functions",
   "type": "module",
   "main": "dist/index.esm.js",
   "module": "dist/index.esm.js",
