@@ -1,5 +1,5 @@
 // Main exports for Maven SSO package
-export { useMavenSSO } from "./hooks/useMavenSSO";
+export { useTeamworkSSO } from "./hooks/useTeamworkSSO";
 export { Login } from "./components/Login";
 
 // Auth Provider (React Context)

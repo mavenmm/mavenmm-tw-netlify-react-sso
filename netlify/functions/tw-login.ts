@@ -106,7 +106,18 @@ const handler: Handler = async (event) => {
     const isProduction =
       process.env.NODE_ENV === "production" || !origin.includes("localhost");
     const secureFlag = isProduction ? "Secure; " : "";
-    const cookieValue = `maven_auth_token=${accessToken}; Path=/; HttpOnly; ${secureFlag}SameSite=Lax; Max-Age=86400`;
+
+    // Determine cookie domain for subdomain sharing
+    let domainFlag = "";
+    if (origin.includes("localhost")) {
+      // For localhost, don't set domain (allows any localhost port)
+      domainFlag = "";
+    } else if (process.env.VITE_COOKIE_DOMAIN) {
+      // For production/staging, use configured domain for subdomain sharing
+      domainFlag = `Domain=${process.env.VITE_COOKIE_DOMAIN}; `;
+    }
+
+    const cookieValue = `tw_auth_token=${accessToken}; Path=/; HttpOnly; ${secureFlag}${domainFlag}SameSite=Lax; Max-Age=86400`;
 
     return {
       statusCode: 200,

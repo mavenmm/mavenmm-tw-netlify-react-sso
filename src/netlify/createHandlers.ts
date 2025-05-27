@@ -120,7 +120,7 @@ export function createLoginHandler(config: MavenSSOConfig): Handler {
 
       // Set auth cookie with configurable options
       const cookieOptions = [
-        `maven_auth_token=${accessToken}`,
+        `tw_auth_token=${accessToken}`,
         "Path=/",
         "HttpOnly",
         "Secure",
@@ -128,7 +128,8 @@ export function createLoginHandler(config: MavenSSOConfig): Handler {
         `Max-Age=${config.cookieMaxAge || 86400}`,
       ];
 
-      if (config.cookieDomain) {
+      // Add domain for subdomain sharing if configured and not localhost
+      if (!origin.includes("localhost") && config.cookieDomain) {
         cookieOptions.push(`Domain=${config.cookieDomain}`);
       }
 
@@ -189,7 +190,7 @@ export function createLogoutHandler(config: MavenSSOConfig): Handler {
 
       // Clear the auth cookie
       const clearCookieOptions = [
-        "maven_auth_token=",
+        "tw_auth_token=",
         "Path=/",
         "HttpOnly",
         "Secure",
@@ -197,7 +198,8 @@ export function createLogoutHandler(config: MavenSSOConfig): Handler {
         "Max-Age=0",
       ];
 
-      if (config.cookieDomain) {
+      // Add domain for subdomain sharing if configured and not localhost
+      if (!origin.includes("localhost") && config.cookieDomain) {
         clearCookieOptions.push(`Domain=${config.cookieDomain}`);
       }
 
@@ -261,7 +263,7 @@ export function createCheckAuthHandler(config: MavenSSOConfig): Handler {
 
       // Get the auth token from cookies
       const cookies = event.headers.cookie || "";
-      const authTokenMatch = cookies.match(/maven_auth_token=([^;]+)/);
+      const authTokenMatch = cookies.match(/tw_auth_token=([^;]+)/);
       const authToken = authTokenMatch ? authTokenMatch[1] : null;
 
       if (!authToken) {

@@ -56,22 +56,30 @@ export const handler = createCheckAuthHandler(config);
 `,
 
   envExample: `# =============================================================================
-# Maven SSO Package - Environment Variables
+# Teamwork SSO Package - Environment Variables
 # =============================================================================
 # Copy this file to .env and fill in your actual values
 
-# REQUIRED: Teamwork OAuth Credentials
+# REQUIRED: Teamwork OAuth Credentials (Client-side)
 # Get these from your Teamwork account's OAuth app settings
+VITE_TEAMWORK_CLIENT_ID=your_teamwork_client_id_here
+VITE_TEAMWORK_CLIENT_SECRET=your_teamwork_client_secret_here
+VITE_TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/
+
+# REQUIRED: Teamwork OAuth Credentials (Server-side for Netlify Functions)
 TEAMWORK_CLIENT_ID=your_teamwork_client_id_here
 TEAMWORK_CLIENT_SECRET=your_teamwork_client_secret_here
 TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/
+
+# OPTIONAL: Cookie Domain for Subdomain Sharing
+# Set to enable cookie sharing across subdomains (e.g., .mavenmm.com)
+# Leave empty for localhost or single domain usage
+VITE_COOKIE_DOMAIN=
 
 # OPTIONAL: CORS Configuration (comma-separated)
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8888,https://yourapp.netlify.app
 
 # OPTIONAL: Cookie Configuration
-# Set COOKIE_DOMAIN to share cookies across subdomains (e.g., .yourdomain.com)
-COOKIE_DOMAIN=
 COOKIE_MAX_AGE=86400
 
 # OPTIONAL: Environment
@@ -82,18 +90,24 @@ NODE_ENV=production
 # =============================================================================
 
 # Local Development:
+# VITE_TEAMWORK_CLIENT_ID=abc123
+# VITE_TEAMWORK_CLIENT_SECRET=secret123
+# VITE_TEAMWORK_REDIRECT_URI=http://localhost:3000/
 # TEAMWORK_CLIENT_ID=abc123
 # TEAMWORK_CLIENT_SECRET=secret123
 # TEAMWORK_REDIRECT_URI=http://localhost:3000/
 # ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8888
 # NODE_ENV=development
 
-# Production:
+# Production with Subdomain Sharing:
+# VITE_TEAMWORK_CLIENT_ID=abc123
+# VITE_TEAMWORK_CLIENT_SECRET=secret123
+# VITE_TEAMWORK_REDIRECT_URI=https://app.mavenmm.com/
+# VITE_COOKIE_DOMAIN=.mavenmm.com
 # TEAMWORK_CLIENT_ID=abc123
 # TEAMWORK_CLIENT_SECRET=secret123
-# TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/
-# ALLOWED_ORIGINS=https://yourapp.netlify.app,https://admin.yourapp.com
-# COOKIE_DOMAIN=.yourapp.com
+# TEAMWORK_REDIRECT_URI=https://app.mavenmm.com/
+# ALLOWED_ORIGINS=https://app.mavenmm.com,https://admin.mavenmm.com
 # NODE_ENV=production
 `,
 
@@ -112,7 +126,7 @@ NODE_ENV=production
   status = 200
 `,
 
-  readme: `# Maven SSO Integration
+  readme: `# Teamwork SSO Integration
 
 This project uses the \`mavenmm-tw-netlify-react-sso\` package for Teamwork authentication.
 
@@ -135,6 +149,17 @@ This project uses the \`mavenmm-tw-netlify-react-sso\` package for Teamwork auth
    - Set the redirect URI to match your \`TEAMWORK_REDIRECT_URI\`
    - Copy the client ID and secret to your \`.env\` file
 
+## Cookie Domain Configuration
+
+For subdomain sharing (e.g., sharing auth between \`app.mavenmm.com\` and \`admin.mavenmm.com\`):
+
+\`\`\`bash
+# In your .env file
+VITE_COOKIE_DOMAIN=.mavenmm.com
+\`\`\`
+
+This allows the authentication cookie to work across all \`*.mavenmm.com\` subdomains.
+
 ## Development
 
 \`\`\`bash
@@ -150,7 +175,7 @@ netlify dev
 ## Frontend Integration
 
 \`\`\`jsx
-import { AuthProvider, useMavenSSO, Login } from 'mavenmm-tw-netlify-react-sso';
+import { AuthProvider, useTeamworkSSO, Login } from 'mavenmm-tw-netlify-react-sso';
 
 function App() {
   return (
@@ -164,7 +189,7 @@ function App() {
 }
 
 function Dashboard() {
-  const { user, logout } = useMavenSSO();
+  const { user, logout } = useTeamworkSSO();
   
   return (
     <div>

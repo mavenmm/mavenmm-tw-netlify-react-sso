@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { LoginResult, User } from "../types";
 
-export function useMavenSSO() {
+export function useTeamworkSSO() {
   const [user, setUser] = useState<User | null>(() => {
     // Try to get user from localStorage on init
     try {
@@ -67,7 +67,7 @@ export function useMavenSSO() {
 
       return { twUser };
     } catch (err) {
-      console.error("💥 Error caught in useMavenSSO.ts:", err);
+      console.error("💥 Error caught in useTeamworkSSO.ts:", err);
       throw new Error("Failed to log in");
     }
   };
@@ -90,12 +90,14 @@ export function useMavenSSO() {
 
       // Clear cookies
       document.cookie =
-        "maven_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        "tw_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 
-      // For non-localhost environments, also clear with domain
+      // For non-localhost environments, also clear with configured domain
       if (window.location.hostname !== "localhost") {
-        document.cookie =
-          "maven_auth_token=; path=/; domain=.mavenmm.com; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        const cookieDomain = import.meta.env?.VITE_COOKIE_DOMAIN;
+        if (cookieDomain) {
+          document.cookie = `tw_auth_token=; path=/; domain=${cookieDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        }
       }
     } catch (error) {
       console.error("Logout error:", error);
@@ -140,13 +142,13 @@ export function useMavenSSO() {
               // Create a basic user object since we don't have one
               const basicUser: User = {
                 id: data._id || "temp-user",
-                firstName: "Maven",
+                firstName: "Teamwork",
                 lastName: "User",
-                email: "user@maven.example",
+                email: "user@teamwork.example",
                 avatar: "",
                 company: {
                   id: 1,
-                  name: "Maven",
+                  name: "Teamwork",
                   logo: "",
                 },
               };

@@ -1,7 +1,7 @@
 import { useEffect, createContext, useContext, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Login } from "../components/Login";
-import { useMavenSSO } from "../hooks/useMavenSSO";
+import { useTeamworkSSO } from "../hooks/useTeamworkSSO";
 import { isDev } from "../utils/env";
 import type { User, AuthContextType } from "../types";
 
@@ -23,7 +23,7 @@ export default function AuthProvider({
 }) {
   const navigate = useNavigate();
   const { user, setUser, logout, loading, isAuthenticated, login } =
-    useMavenSSO();
+    useTeamworkSSO();
 
   // Get the code from the URL for the teamwork login flow
   const location = useLocation();

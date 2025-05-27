@@ -38,7 +38,7 @@ const handler: Handler = async (event) => {
 
     // Get the auth token from cookies
     const cookies = event.headers.cookie || "";
-    const authTokenMatch = cookies.match(/maven_auth_token=([^;]+)/);
+    const authTokenMatch = cookies.match(/tw_auth_token=([^;]+)/);
     const authToken = authTokenMatch ? authTokenMatch[1] : null;
 
     if (!authToken) {
