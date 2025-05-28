@@ -60,12 +60,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/mavenmm-tw-netlify-react-sso.git"
+    "url": "git+https://github.com/mavenmm/mavenmm-tw-netlify-react-sso.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/mavenmm-tw-netlify-react-sso/issues"
+    "url": "https://github.com/mavenmm/avenmm-tw-netlify-react-sso/issues"
   },
-  "homepage": "https://github.com/your-username/mavenmm-tw-netlify-react-sso#readme",
+  "homepage": "https://github.com/mavenmm/mavenmm-tw-netlify-react-sso#readme",
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0",
