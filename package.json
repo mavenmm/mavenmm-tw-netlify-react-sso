@@ -1,6 +1,6 @@
 {
   "name": "@mavenmm/teamwork-netlify-react-sso",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "SSO system for Vite+React+Netlify apps with Teamwork authentication and Netlify Functions",
   "type": "module",
   "main": "dist/index.esm.js",
