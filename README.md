@@ -1,3 +1,5 @@
+🚨 THIS IS WIP
+
 # Teamwork SSO Package 🚀
 
 A simple React package for Teamwork authentication using Vite+React+Netlify Functions with subdomain cookie sharing support.
@@ -135,19 +137,19 @@ VITE_TEAMWORK_CLIENT_SECRET=your_teamwork_client_secret
 VITE_TEAMWORK_REDIRECT_URI=https://yourapp.netlify.app/
 
 # Optional: Cookie domain for subdomain sharing
-VITE_COOKIE_DOMAIN=.mavenmm.com
+VITE_COOKIE_DOMAIN=.yourdomain.com
 ```
 
 ## Cookie Domain Configuration 🍪
 
-For subdomain sharing (e.g., sharing auth between `app.mavenmm.com` and `admin.mavenmm.com`):
+For subdomain sharing (e.g., sharing auth between `app.yourdomain.com` and `admin.yourdomain.com`):
 
 ```bash
 # In your .env file
-VITE_COOKIE_DOMAIN=.mavenmm.com
+VITE_COOKIE_DOMAIN=.yourdomain.com
 ```
 
-This allows the authentication cookie to work across all `*.mavenmm.com` subdomains.
+This allows the authentication cookie to work across all `*.yourdomain.com` subdomains.
 
 **Behavior:**
 - **Localhost**: No domain set (works with any localhost port)
