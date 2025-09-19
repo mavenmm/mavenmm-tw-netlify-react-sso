@@ -1,5 +1,7 @@
 [build]
+  command = ""
   functions = 'functions'
+  publish = "."
 
 # API requests should be handled first
 [[redirects]]

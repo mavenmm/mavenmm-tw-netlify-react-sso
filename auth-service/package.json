@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Maven Centralized Authentication Service - auth.mavenmm.com",
   "scripts": {
+    "build": "echo 'No build step required for Netlify Functions'",
     "dev": "netlify dev",
     "test": "jest --config jest.config.cjs",
     "test:watch": "jest --config jest.config.cjs --watch"
