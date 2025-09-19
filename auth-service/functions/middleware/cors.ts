@@ -24,6 +24,7 @@ const getAllowedOrigins = (): string[] => {
 
   // Production - explicit allowlist of Maven domains
   const allowedOrigins = [
+    'https://app.mavenmm.com',
     'https://app1.mavenmm.com',
     'https://admin.mavenmm.com',
     'https://dashboard.mavenmm.com',

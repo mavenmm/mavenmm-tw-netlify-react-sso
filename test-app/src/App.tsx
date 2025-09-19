@@ -3,10 +3,17 @@ import { useLocation } from 'react-router-dom';
 import { useTeamworkAuth, Login, type TeamworkAuthConfig } from '@mavenmm/teamwork-auth';
 
 function App() {
+  // Toggle between local and production for testing
+  const useProduction = window.location.search.includes('prod=true');
+
   const authConfig: TeamworkAuthConfig = useMemo(() => ({
-    authServiceUrl: 'http://localhost:8888', // Local auth service
-    cookieDomain: undefined, // No domain for localhost
-  }), []);
+    authServiceUrl: useProduction
+      ? 'https://auth.mavenmm.com'
+      : 'http://localhost:8888',
+    cookieDomain: useProduction
+      ? '.mavenmm.com'
+      : undefined,
+  }), [useProduction]);
 
   const { user, loading, isAuthenticated, logout, login } = useTeamworkAuth(authConfig);
   const location = useLocation();
@@ -70,6 +77,18 @@ function App() {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <h1>🚀 Teamwork Auth Test App</h1>
+        <div style={{
+          background: useProduction ? '#e8f5e8' : '#f0f8ff',
+          border: useProduction ? '2px solid #4caf50' : '2px solid #2196f3',
+          borderRadius: '8px',
+          padding: '10px',
+          margin: '10px 0',
+          fontWeight: 'bold'
+        }}>
+          {useProduction ? '🌐 PRODUCTION MODE' : '🏠 LOCAL DEV MODE'}
+          <br />
+          <small>Auth Service: {authConfig.authServiceUrl}</small>
+        </div>
         <p>Please log in with your Teamwork account:</p>
 
         {/* Debug: Display environment variables on page */}
