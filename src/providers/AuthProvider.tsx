@@ -1,8 +1,7 @@
 import { useEffect, createContext, useContext, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Login } from "../components/Login";
-import { useTeamworkSSO } from "../hooks/useTeamworkSSO";
-import { isDev } from "../utils/env";
+import { useTeamworkAuth } from "../hooks/useTeamworkAuth";
 import type { User, AuthContextType } from "../types";
 
 export const AuthContext = createContext({} as AuthContextType);
@@ -22,7 +21,7 @@ export default function AuthProvider({
   children: React.ReactNode;
 }) {
   const { user, setUser, logout, loading, isAuthenticated, login } =
-    useTeamworkSSO();
+    useTeamworkAuth();
 
   // Get the code from the URL for the teamwork login flow
   const location = useLocation();
@@ -51,19 +50,11 @@ export default function AuthProvider({
 
     // Process OAuth callback code if present
     if (code && !user) {
-      if (isDev()) {
-        // React.StrictMode is causing this provider to render twice on load, teamwork will return an error on the second login call
-        // Add a prevCode check here to make sure we don't double request /api/login with the same code
-        if (usedCode !== code && lastCodeRef.current !== code) {
-          lastCodeRef.current = code;
-          handleLogin(code);
-        }
-      } else {
-        // In production mode, always make the API call
-        if (lastCodeRef.current !== code) {
-          lastCodeRef.current = code;
-          handleLogin(code);
-        }
+      // React.StrictMode is causing this provider to render twice on load, teamwork will return an error on the second login call
+      // Add a prevCode check here to make sure we don't double request /api/login with the same code
+      if (usedCode !== code && lastCodeRef.current !== code) {
+        lastCodeRef.current = code;
+        handleLogin(code);
       }
     }
   }, [code, user, loading, login]);

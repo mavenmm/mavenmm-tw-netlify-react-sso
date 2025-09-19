@@ -1,0 +1,32 @@
+[build]
+  functions = 'auth-service/functions'
+
+# API requests should be handled first
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true
+
+[dev]
+  port = 8888  # Port for Netlify Dev server
+  open = false
+  autoLaunch = false
+
+# CORS Headers for API path
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "${ALLOWED_ORIGINS}"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, code, cookie"
+    Access-Control-Allow-Credentials = "true"
+
+# CORS Headers for direct function path
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "${ALLOWED_ORIGINS}"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, code, cookie"
+    Access-Control-Allow-Credentials = "true"
