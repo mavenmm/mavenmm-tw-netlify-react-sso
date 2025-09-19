@@ -1,5 +1,5 @@
 [build]
-  functions = 'auth-service/functions'
+  functions = 'functions'
 
 # API requests should be handled first
 [[redirects]]
