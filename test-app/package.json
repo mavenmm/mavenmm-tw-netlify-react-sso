@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:prod": "VITE_USE_PRODUCTION=true vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "setup": "cd .. && npm run build && cd test-app && npm link ../dist"

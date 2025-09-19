@@ -3,8 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { useTeamworkAuth, Login, type TeamworkAuthConfig } from '@mavenmm/teamwork-auth';
 
 function App() {
-  // Toggle between local and production for testing
-  const useProduction = window.location.search.includes('prod=true');
+  // Toggle between local and production via environment variable
+  const useProduction = import.meta.env.VITE_USE_PRODUCTION === 'true';
 
   const authConfig: TeamworkAuthConfig = useMemo(() => ({
     authServiceUrl: useProduction
@@ -88,6 +88,8 @@ function App() {
           {useProduction ? '🌐 PRODUCTION MODE' : '🏠 LOCAL DEV MODE'}
           <br />
           <small>Auth Service: {authConfig.authServiceUrl}</small>
+          <br />
+          <small>Run: npm run {useProduction ? 'dev:prod' : 'dev'}</small>
         </div>
         <p>Please log in with your Teamwork account:</p>
 
