@@ -1,7 +1,7 @@
 import { useEffect, createContext, useContext, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Login } from "../components/Login";
-import { useTeamworkAuth } from "../hooks/useTeamworkAuth";
+import { useTeamworkAuth, type TeamworkAuthConfig } from "../hooks/useTeamworkAuth";
 import type { User, AuthContextType } from "../types";
 
 export const AuthContext = createContext({} as AuthContextType);
@@ -15,13 +15,17 @@ export function useAuthContext() {
   return context;
 }
 
+export interface AuthProviderProps {
+  children: React.ReactNode;
+  authConfig: TeamworkAuthConfig;
+}
+
 export default function AuthProvider({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+  authConfig,
+}: AuthProviderProps) {
   const { user, setUser, logout, loading, isAuthenticated, login } =
-    useTeamworkAuth();
+    useTeamworkAuth(authConfig);
 
   // Get the code from the URL for the teamwork login flow
   const location = useLocation();

@@ -4,6 +4,7 @@ import {
   HandlerEvent,
 } from "@netlify/functions";
 import { getCorsHeaders, handlePreflight, validateOrigin } from "./middleware/cors";
+import { logger } from "./utils/logger";
 
 const handler: Handler = async (
   event: HandlerEvent
@@ -59,13 +60,12 @@ const handler: Handler = async (
       }),
     };
   } catch (error) {
-    console.error("❌ Error in logout function:", error);
+    logger.error("Error in logout function:", error);
     return {
       statusCode: 500,
       headers: getCorsHeaders(event),
       body: JSON.stringify({
         error: "An error occurred during logout",
-        details: error instanceof Error ? error.message : "Unknown error",
       }),
     };
   }

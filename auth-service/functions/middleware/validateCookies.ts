@@ -1,19 +1,13 @@
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
 import cookie from "cookie";
-
-// color red for console logs
-const red = "\x1b[31m";
-// color reset for console logs
-const reset = "\x1b[0m";
-// color green for console logs
-// const green = "\x1b[32m";
+import { logger } from "../utils/logger";
 
 export const validate = function (cookieHeader) {
   const jwt_key = process.env.JWT_KEY;
 
   if (!jwt_key) {
-    console.error(red, "JWT_KEY is not defined in the environment", reset);
+    logger.error("JWT_KEY is not defined in the environment");
     return {
       status: "Invalid",
       code: 511,
@@ -22,7 +16,7 @@ export const validate = function (cookieHeader) {
   }
 
   if (!cookieHeader) {
-    console.error(red, "No cookie header provided", reset);
+    logger.debug("No cookie header provided");
     return { status: "Invalid", code: 401, message: "Unauthorized" };
   }
 
@@ -30,7 +24,7 @@ export const validate = function (cookieHeader) {
   const jwtToken = cookies?.maven_auth_token;
 
   if (!jwtToken) {
-    console.error(red, "JWT token not found in cookies", reset);
+    logger.debug("JWT token not found in cookies");
     return { status: "Invalid", code: 401, message: "Unauthorized" };
   }
 
@@ -43,15 +37,16 @@ export const validate = function (cookieHeader) {
       const diff = current - exp;
 
       if (diff > 0) {
-        console.error(
-          red,
-          `JWT has expired. Expired ${diff} seconds ago.`,
-          reset
-        );
+        logger.debug(`JWT has expired. Expired ${diff} seconds ago.`);
         return { status: "Invalid", code: 401, message: "JWT has expired" };
       }
 
-      console.log("Token: ", payload.access_token);
+      // SECURITY: Never log tokens - sanitizer will redact them anyway
+      logger.debug("JWT validated successfully", {
+        userId: payload._id,
+        timeRemaining: Math.abs(diff),
+      });
+
       return {
         status: "Valid",
         code: 200,
@@ -66,7 +61,7 @@ export const validate = function (cookieHeader) {
         },
       };
     } else {
-      console.error(red, "JWT payload is invalid", reset);
+      logger.error("JWT payload is invalid");
       return {
         status: "Invalid",
         code: 401,
@@ -74,7 +69,7 @@ export const validate = function (cookieHeader) {
       };
     }
   } catch (err) {
-    console.error(red, `JWT validation error: ${err.message}`, reset);
+    logger.error("JWT validation error:", err.message);
     return { status: "Invalid", code: 401, message: err.message };
   }
 };

@@ -1,4 +1,5 @@
 import type { HandlerEvent } from "@netlify/functions";
+import { logger } from "../utils/logger";
 
 /**
  * CORS configuration for auth service
@@ -8,8 +9,9 @@ import type { HandlerEvent } from "@netlify/functions";
 // Allowed origins for CORS
 const getAllowedOrigins = (): string[] => {
   const env = process.env.NODE_ENV || 'development';
+  const isProduction = env === 'production' || process.env.NETLIFY === 'true';
 
-  if (env === 'development') {
+  if (!isProduction) {
     // Local development - allow common localhost ports
     return [
       'http://localhost:3000',
@@ -22,18 +24,22 @@ const getAllowedOrigins = (): string[] => {
     ];
   }
 
-  // Production - explicit allowlist of Maven domains
-  const allowedOrigins = [
-    'https://app.mavenmm.com',
-    'https://app1.mavenmm.com',
-    'https://admin.mavenmm.com',
-    'https://dashboard.mavenmm.com',
-    'https://auth.mavenmm.com',
-  ];
+  // Production - explicit allowlist from environment variable
+  const envOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [];
 
-  // Add custom origins from environment variable
-  const customOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
-  return [...allowedOrigins, ...customOrigins.map(origin => origin.trim())];
+  if (envOrigins.length === 0) {
+    // Fallback to default Maven domains if no environment variable set
+    logger.warn('ALLOWED_ORIGINS environment variable not set, using defaults');
+    return [
+      'https://app.mavenmm.com',
+      'https://app1.mavenmm.com',
+      'https://admin.mavenmm.com',
+      'https://dashboard.mavenmm.com',
+      'https://auth.mavenmm.com',
+    ];
+  }
+
+  return envOrigins;
 };
 
 /**
@@ -47,7 +53,11 @@ export function getCorsHeaders(event: HandlerEvent): Record<string, string> {
   const isAllowed = allowedOrigins.includes(requestOrigin);
   const allowedOrigin = isAllowed ? requestOrigin : allowedOrigins[0]; // Fallback to first allowed origin
 
-  console.log(`CORS: Request from ${requestOrigin}, allowed: ${isAllowed}`);
+  if (!isAllowed && requestOrigin) {
+    logger.security('CORS: Blocked unauthorized origin', { origin: requestOrigin });
+  }
+
+  logger.debug(`CORS: Request from ${requestOrigin}, allowed: ${isAllowed}`);
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin,

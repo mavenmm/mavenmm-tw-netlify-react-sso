@@ -18,49 +18,31 @@ function App() {
   const { user, loading, isAuthenticated, logout, login } = useTeamworkAuth(authConfig);
   const location = useLocation();
 
-  // Debug: Log hook state
-  console.log('🎯 [APP] Hook state:', {
-    user: user ? 'Present' : 'Null',
+  // DEBUG: Log state for troubleshooting
+  console.log('🐛 DEBUG - App State:', {
     loading,
     isAuthenticated,
-    userDetails: user
+    hasUser: !!user,
+    userId: user?.id,
+    userName: user ? `${user.firstName} ${user.lastName}` : 'No user',
+    url: window.location.href,
+    search: location.search,
   });
-
-  // Debug: Log environment variables
-  console.log('🔧 Environment Variables Debug:');
-  console.log('VITE_CLIENT_ID:', import.meta.env.VITE_CLIENT_ID);
-  console.log('VITE_CLIENT_SECRET:', import.meta.env.VITE_CLIENT_SECRET);
-  console.log('VITE_REDIRECT_URI:', import.meta.env.VITE_REDIRECT_URI);
-  console.log('--- Login component expects these: ---');
-  console.log('VITE_TEAMWORK_CLIENT_ID:', import.meta.env.VITE_TEAMWORK_CLIENT_ID);
-  console.log('VITE_TEAMWORK_CLIENT_SECRET:', import.meta.env.VITE_TEAMWORK_CLIENT_SECRET);
-  console.log('VITE_TEAMWORK_REDIRECT_URI:', import.meta.env.VITE_TEAMWORK_REDIRECT_URI);
-  console.log('JWT_KEY:', import.meta.env.JWT_KEY);
-  console.log('DEV_ID:', import.meta.env.DEV_ID);
-  console.log('All env vars:', import.meta.env);
 
   // Handle OAuth callback
   useEffect(() => {
-    console.log('🔄 useEffect triggered - location.search:', location.search);
-    console.log('🔄 useEffect triggered - isAuthenticated:', isAuthenticated);
-
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
-    console.log('🔍 Extracted code from URL:', code);
 
-    if (code) {
-      if (!isAuthenticated) {
-        console.log('🚀 Starting login process with code:', code);
-        login(code).then((result) => {
-          console.log('✅ Login succeeded:', result);
-        }).catch((err: any) => {
+    console.log('🔄 OAuth Callback Check:', { code, isAuthenticated });
+
+    if (code && !isAuthenticated) {
+      console.log('🚀 Attempting login with code...');
+      login(code)
+        .then(() => console.log('✅ Login successful'))
+        .catch((err: any) => {
           console.error('❌ Login failed:', err);
         });
-      } else {
-        console.log('⏭️ User already authenticated, skipping login');
-      }
-    } else {
-      console.log('ℹ️ No code in URL, not processing OAuth callback');
     }
   }, [location.search, isAuthenticated, login]);
 
@@ -91,29 +73,30 @@ function App() {
           <br />
           <small>Run: npm run {useProduction ? 'dev:prod' : 'dev'}</small>
         </div>
-        <p>Please log in with your Teamwork account:</p>
 
-        {/* Debug: Display environment variables on page */}
+        {/* Debug Panel */}
         <div style={{
-          background: '#f5f5f5',
-          border: '1px solid #ddd',
+          background: '#fff3cd',
+          border: '2px solid #ffc107',
           borderRadius: '8px',
           padding: '15px',
           margin: '20px 0',
           textAlign: 'left',
-          fontSize: '12px',
+          fontSize: '13px',
           fontFamily: 'monospace'
         }}>
-          <h3>🔧 Debug Info:</h3>
+          <h3 style={{ margin: '0 0 10px 0' }}>🐛 Debug Info</h3>
+          <div><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</div>
+          <div><strong>Authenticated:</strong> {isAuthenticated ? 'Yes' : 'No'}</div>
+          <div><strong>User:</strong> {user ? `${user.firstName} ${user.lastName}` : 'None'}</div>
           <div><strong>Current URL:</strong> {window.location.href}</div>
-          <div><strong>Search params:</strong> {location.search || 'None'}</div>
-          <div><strong>OAuth code:</strong> {new URLSearchParams(location.search).get('code') || 'None'}</div>
-          <div><strong>Auth loading:</strong> {loading ? 'Yes' : 'No'}</div>
-          <div><strong>Is authenticated:</strong> {isAuthenticated ? 'Yes' : 'No'}</div>
-          <hr style={{ margin: '10px 0' }} />
-          <div><strong>VITE_TEAMWORK_CLIENT_ID:</strong> {import.meta.env.VITE_TEAMWORK_CLIENT_ID || '❌ NOT LOADED'}</div>
-          <div><strong>VITE_TEAMWORK_REDIRECT_URI:</strong> {import.meta.env.VITE_TEAMWORK_REDIRECT_URI || '❌ NOT LOADED'}</div>
+          <div><strong>OAuth Code:</strong> {new URLSearchParams(location.search).get('code') || 'None'}</div>
+          <div style={{ marginTop: '10px', fontSize: '11px', color: '#666' }}>
+            Check browser console for detailed logs
+          </div>
         </div>
+
+        <p>Please log in with your Teamwork account:</p>
 
         <Login
           clientID={import.meta.env.VITE_TEAMWORK_CLIENT_ID || import.meta.env.VITE_CLIENT_ID}

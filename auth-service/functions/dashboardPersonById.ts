@@ -1,6 +1,7 @@
 import type { HandlerEvent, HandlerContext, Handler } from "@netlify/functions";
 import { validate } from "./middleware/validateCookies";
 import { request, gql } from "graphql-request";
+import { logger } from "./utils/logger";
 
 const getPersonById = async (apiKey: string, personId: string) => {
   return request({
@@ -32,7 +33,7 @@ const getPersonById = async (apiKey: string, personId: string) => {
   })
     .then((res: any) => res.personById)
     .catch((err) => {
-      console.log(err);
+      logger.error("Error fetching person by ID from GraphQL:", err);
       throw Error(err);
     });
 };
@@ -61,13 +62,12 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
     // Get person by ID from the database
     try {
       const response = await getPersonById(apiKey, personId);
-      // console.log("response", response);
       return {
         statusCode: 200,
         body: JSON.stringify(response),
       };
     } catch (err) {
-      console.log("error", err);
+      logger.error("Error fetching person by ID:", err);
       return {
         statusCode: 400,
         body: JSON.stringify({

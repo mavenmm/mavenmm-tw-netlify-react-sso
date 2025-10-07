@@ -1,5 +1,6 @@
 import type { Handler } from "@netlify/functions";
 import { validate } from "./middleware/validateCookies";
+import { logger } from "./utils/logger";
 
 // Define the validation result type
 interface ValidationResult {
@@ -19,14 +20,12 @@ const handler: Handler = async (event) => {
     const origin = event.headers.origin || "";
     const host = event.headers.host || "";
 
-    // Enhanced debug logging at entry point
-    console.log("🚀 Incoming request:", {
+    // Debug logging at entry point
+    logger.debug("SSO: Incoming request", {
       origin,
       host,
       method: event.httpMethod,
       path: event.path,
-      headers: event.headers,
-      rawUrl: event.rawUrl,
     });
 
     // Define security headers
@@ -48,12 +47,9 @@ const handler: Handler = async (event) => {
       pattern.test(origin || "")
     );
 
-    console.log("🔒 Origin validation:", {
+    logger.debug("SSO: Origin validation", {
       origin,
       isAllowedOrigin,
-      matchedPattern: allowedOrigins
-        .find((pattern) => pattern.test(origin || ""))
-        ?.toString(),
     });
 
     // CORS headers - now more permissive during preflight
@@ -68,7 +64,7 @@ const handler: Handler = async (event) => {
 
     // Handle OPTIONS request (preflight)
     if (event.httpMethod === "OPTIONS") {
-      console.log("👉 Handling OPTIONS preflight request");
+      logger.debug("SSO: Handling OPTIONS preflight request");
       return {
         statusCode: 204,
         headers: {
@@ -81,7 +77,7 @@ const handler: Handler = async (event) => {
 
     // Only allow POST method
     if (event.httpMethod !== "POST") {
-      console.log("❌ Method not allowed:", event.httpMethod);
+      logger.warn("SSO: Method not allowed:", event.httpMethod);
       return {
         statusCode: 405,
         headers: {
@@ -244,7 +240,7 @@ const handler: Handler = async (event) => {
     };
   } catch (error) {
     const err = error as Error;
-    console.error("❌ Internal error:", err);
+    logger.error("SSO: Internal error:", err);
     return {
       statusCode: 500,
       headers: {

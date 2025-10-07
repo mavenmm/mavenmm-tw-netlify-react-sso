@@ -5,6 +5,7 @@ import axios from "axios";
 import { User } from "../src/types/teamwork.ts";
 import { Token } from "../src/types/auth.ts";
 import { getCorsHeaders, handlePreflight, validateOrigin } from "./middleware/cors";
+import { logger } from "./utils/logger";
 
 const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
   try {
@@ -50,12 +51,12 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
 
     // If the JWT secret is not set, return an error
     if (!JWT_SECRET) {
-      console.error("JWT_KEY environment variable is not set");
+      logger.error("JWT_KEY environment variable is not set");
       return {
         statusCode: 500,
         headers: getCorsHeaders(event),
         body: JSON.stringify({
-          error: "JWT_KEY environment variable is not set",
+          error: "Server configuration error",
         }),
       };
     }
@@ -112,8 +113,7 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
                        redirectUri?.includes("localhost") ||
                        mavenRedirectUrl?.includes("localhost");
 
-    console.log(`🍪 [COOKIE] Setting cookie for ${isLocalhost ? 'localhost' : 'production'}`);
-    console.log(`🍪 [COOKIE] Host: ${host}, RedirectURI: ${redirectUri}, MavenRedirectUrl: ${mavenRedirectUrl}`);
+    logger.debug(`Setting authentication cookie for ${isLocalhost ? 'localhost' : 'production'}`);
 
     // Base cookie settings
     const baseSettings = {
@@ -127,14 +127,6 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
     const mavenCookie = cookie.serialize("maven_auth_token", jwtToken, {
       ...(baseSettings as cookie.SerializeOptions),
       domain: isLocalhost ? ".localhost" : ".mavenmm.com",
-    });
-
-    console.log(`🍪 [COOKIE] Generated cookie settings:`, {
-      domain: isLocalhost ? '.localhost' : '.mavenmm.com',
-      secure: !isLocalhost,
-      httpOnly: true,
-      sameSite: isLocalhost ? "lax" : "strict",
-      maxAge: twoWeeks
     });
 
     // Security headers
@@ -160,13 +152,12 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       }),
     };
   } catch (error) {
-    console.error("Error in login handler:", error);
+    logger.error("Error in login handler:", error);
     return {
       statusCode: 500,
       headers: getCorsHeaders(event),
       body: JSON.stringify({
         error: "Authentication failed",
-        details: error instanceof Error ? error.message : "Unknown error",
       }),
     };
   }
