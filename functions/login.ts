@@ -108,12 +108,17 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
 
     const user: User = data.user;
 
-    // Determine if we're in development (localhost)
-    const isLocalhost = host.includes("localhost") ||
-                       redirectUri?.includes("localhost") ||
-                       mavenRedirectUrl?.includes("localhost");
+    // Determine if we're in development (localhost) by checking origin/redirect
+    const origin = event.headers.origin || event.headers.referer || "";
+    const isLocalhost = redirectUri?.includes("localhost") ||
+                       mavenRedirectUrl?.includes("localhost") ||
+                       origin.includes("localhost");
 
-    logger.debug(`Setting authentication cookie for ${isLocalhost ? 'localhost' : 'production'}`);
+    logger.debug(`Setting authentication cookie for ${isLocalhost ? 'localhost' : 'production'}`, {
+      origin,
+      redirectUri,
+      mavenRedirectUrl
+    });
 
     // Base cookie settings
     const baseSettings = {
@@ -124,10 +129,18 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       sameSite: isLocalhost ? "lax" : "strict", // More secure in production
     };
 
-    const mavenCookie = cookie.serialize("maven_auth_token", jwtToken, {
+    // For localhost requests to production auth, don't set domain
+    // This allows the cookie to be set on auth.mavenmm.com and readable by the auth service
+    const cookieOptions: cookie.SerializeOptions = {
       ...(baseSettings as cookie.SerializeOptions),
-      domain: isLocalhost ? ".localhost" : ".mavenmm.com",
-    });
+    };
+
+    // Only set domain for production mavenmm.com origins
+    if (!isLocalhost) {
+      cookieOptions.domain = ".mavenmm.com";
+    }
+
+    const mavenCookie = cookie.serialize("maven_auth_token", jwtToken, cookieOptions);
 
     // Security headers
     const securityHeaders = {
