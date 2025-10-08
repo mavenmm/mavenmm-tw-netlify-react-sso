@@ -14,6 +14,8 @@ import { useTeamworkAuth, Login } from '@mavenmm/teamwork-auth';
 function App() {
   const { user, isAuthenticated, loading, logout } = useTeamworkAuth();
 
+  // That's it! Hook automatically handles OAuth callbacks
+
   if (loading) return <div>Loading...</div>;
 
   if (!isAuthenticated) {
@@ -342,15 +344,32 @@ const { user } = useTeamworkAuth({
 });
 ```
 
-### Handling OAuth Callback
-The hook automatically handles OAuth callbacks. No manual intervention needed.
+### Handling OAuth Callback (v2.2.0+)
+The hook **automatically** handles OAuth callbacks. No manual intervention needed!
+
+**Before v2.2.0**, developers had to manually add:
+```tsx
+// ❌ OLD WAY - Not needed anymore!
+useEffect(() => {
+  const code = new URLSearchParams(location.search).get('code');
+  if (code && !isAuthenticated) login(code);
+}, [location.search, isAuthenticated, login]);
+```
+
+**From v2.2.0+**, the hook does this automatically:
+```tsx
+// ✅ NEW WAY - Just use the hook!
+const { user, isAuthenticated, loading, logout } = useTeamworkAuth();
+// OAuth code is automatically detected and processed
+```
 
 The OAuth flow:
 1. User clicks Login button → redirected to Teamwork
 2. User authenticates with Teamwork
 3. Teamwork redirects back to your app with `?code=xxx`
-4. useTeamworkAuth automatically detects the code and logs in
+4. **useTeamworkAuth automatically detects the code and logs in**
 5. URL is cleaned up (code parameter removed)
+6. User data is loaded automatically
 
 ## Environment-Specific Behavior
 
@@ -656,13 +675,21 @@ See MIGRATION_V2.md in the auth service repo for detailed migration guide.
 
 ---
 
-**Last Updated:** v2.0.4
+**Last Updated:** v2.2.0
 **Package:** @mavenmm/teamwork-auth
 **Auth Service:** auth.mavenmm.com (v2.0)
 
 ## Changelog
 
-### v2.0.4 (Latest)
+### v2.2.0 (Latest)
+- ✅ **Automatic OAuth code detection** - No more manual `useEffect` for OAuth callbacks!
+- ✅ Hook automatically processes `?code=` parameter from URL
+- ✅ Duplicate login prevention built-in
+- ✅ Updated documentation with localhost shared key (`dev_localhost_shared`)
+- ✅ Comprehensive migration guide for existing apps
+- ✅ Common troubleshooting issues table
+
+### v2.0.4
 - ✅ Added `/user` endpoint to fetch user data from auth service
 - ✅ Automatic user data fetching when localStorage is empty
 - ✅ User data survives localStorage being cleared

@@ -442,6 +442,26 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
     }
   };
 
+  // Automatically handle OAuth callback code
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+
+    if (code && !isAuthenticated) {
+      // Prevent duplicate login attempts
+      const previousCode = localStorage.getItem("maven_sso_code");
+      if (previousCode === JSON.stringify(code)) {
+        console.log('OAuth code already processed, skipping duplicate login attempt');
+        return;
+      }
+
+      console.log('Detected OAuth code, logging in automatically...');
+      login(code).catch((error) => {
+        console.error('Auto-login failed:', error);
+      });
+    }
+  }, [isAuthenticated, login]);
+
   // Check authentication on mount
   useEffect(() => {
     checkAuth();
