@@ -9,8 +9,8 @@
     "dev": "netlify dev",
     "test": "jest --config jest.config.cjs",
     "test:watch": "jest --config jest.config.cjs --watch",
-    "test:local": "concurrently \"npm run dev\" \"npm run test:app\"",
-    "test:app": "cd test-app && npm install && npm run dev",
+    "test:local": "cd test-app-local && npm install && npm run dev",
+    "test:hybrid": "concurrently \"npm run dev\" \"cd test-app-hybrid && npm install && npm run dev\"",
     "build:package": "cd teamwork-auth && npm run build",
     "publish:package": "cd teamwork-auth && npm publish"
   },

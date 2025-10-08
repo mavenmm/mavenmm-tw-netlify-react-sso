@@ -309,7 +309,7 @@ export function AuthStatus() {
 
 ```bash
 # .env.local (for local development)
-VITE_AUTH_SERVICE_URL=http://localhost:8888
+VITE_AUTH_SERVICE_URL=http://localhost:9100
 VITE_COOKIE_DOMAIN=undefined
 ```
 
@@ -331,7 +331,7 @@ const isDevelopment = import.meta.env.DEV;
 
 export const authConfig: TeamworkAuthConfig = {
   authServiceUrl: isDevelopment
-    ? 'http://localhost:8888'
+    ? 'http://localhost:9100'
     : 'https://auth.mavenmm.com',
   cookieDomain: isDevelopment
     ? undefined
@@ -389,7 +389,7 @@ export const authConfig: TeamworkAuthConfig = {
 ```bash
 # 1. Start auth service (in separate terminal)
 cd path/to/auth-service
-npm run dev  # Runs on localhost:8888
+npm run dev  # Runs on localhost:9100
 
 # 2. Start your app
 npm run dev  # Usually runs on localhost:3000 or localhost:5173

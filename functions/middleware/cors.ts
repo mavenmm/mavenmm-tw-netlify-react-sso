@@ -1,45 +1,17 @@
 import type { HandlerEvent } from "@netlify/functions";
 import { logger } from "../utils/logger";
+import { getActiveDomains } from "../config/domains";
 
 /**
  * CORS configuration for auth service
- * Handles both local development and production environments
+ * Uses domain registry for explicit whitelisting
  */
 
-// Allowed origins for CORS
+// Allowed origins for CORS - from domain registry
 const getAllowedOrigins = (): string[] => {
-  const env = process.env.NODE_ENV || 'development';
-  const isProduction = env === 'production' || process.env.NETLIFY === 'true';
-
-  if (!isProduction) {
-    // Local development - allow common localhost ports
-    return [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:8080',
-      'http://localhost:8888',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:5173',
-    ];
-  }
-
-  // Production - explicit allowlist from environment variable
-  const envOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [];
-
-  if (envOrigins.length === 0) {
-    // Fallback to default Maven domains if no environment variable set
-    logger.warn('ALLOWED_ORIGINS environment variable not set, using defaults');
-    return [
-      'https://app.mavenmm.com',
-      'https://app1.mavenmm.com',
-      'https://admin.mavenmm.com',
-      'https://dashboard.mavenmm.com',
-      'https://auth.mavenmm.com',
-    ];
-  }
-
-  return envOrigins;
+  // Get all active domains from registry
+  const domains = getActiveDomains();
+  return domains.map(d => d.domain);
 };
 
 /**

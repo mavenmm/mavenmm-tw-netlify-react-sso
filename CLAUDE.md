@@ -47,19 +47,21 @@ The package provides a single entry point:
 - Main export: React components (`useTeamworkAuth`, `Login`, `AuthProvider`, `TeamworkAuthConfig`)
 
 ### Frontend Components (NPM Package)
-- **useTeamworkAuth**: Core authentication hook that communicates with external auth service
+- **useTeamworkAuth**: Core authentication hook with auto-detection (zero config needed!)
 - **AuthProvider**: React context provider for auth state management (requires React Router context)
 - **Login**: Pre-built login component using `@teamwork/login-button`
-- **TeamworkAuthConfig**: TypeScript interface for configuring auth service URL and cookie domain
+- **TeamworkAuthConfig**: TypeScript interface for optional configuration overrides
 
 ### Auth Service Components (`auth-service/`)
 - **Netlify Functions**: Complete auth handlers (`login.ts`, `logout.ts`, `checkAuth.ts`, `sso.ts`)
 - **Middleware**: Cookie validation and JWT handling
 - **Types**: Teamwork API interfaces and auth types
 
-### Configuration
-- **NPM Package**: Only needs `authServiceUrl` and optional `cookieDomain` in React components
-- **Auth Service**: Environment variables for Teamwork OAuth credentials and JWT secrets
+### Configuration (Auto-Detection v2.0.1+)
+- **NPM Package**: Zero configuration! Auto-detects localhost:9100 vs production auth.mavenmm.com
+  - Optional manual override: `useTeamworkAuth({ authServiceUrl: 'custom-url' })`
+- **Auth Service**: Runs on port 9100 (dedicated port to avoid conflicts)
+- **Environment Variables**: Only needed in auth service (Teamwork OAuth credentials and JWT secrets)
 
 ### TypeScript Types
 Comprehensive type definitions in `src/types/index.ts` covering:
@@ -88,7 +90,7 @@ The project uses Jest with TypeScript for testing:
 
 ### Current Status (✅ COMPLETE & WORKING)
 ✅ **Full Authentication Flow Working**: Complete OAuth login → persistent sessions → logout flow
-✅ **Cross-Port Cookie Authentication**: Cookies shared between localhost:3000 and localhost:8888
+✅ **Cross-Port Cookie Authentication**: Cookies shared between localhost:3000 and localhost:9100
 ✅ **URL Cleanup**: OAuth parameters automatically removed from URL after login
 ✅ **State Persistence**: Authentication state survives page refreshes
 ✅ **Environment Variables**: All Teamwork OAuth credentials loading correctly
@@ -119,20 +121,24 @@ npm run dev
 
 ### Testing Progress
 - ✅ Auth service functions working (checkAuth, login, logout, sso, dashboardPersonById)
-- ✅ CORS working between test app (3000) and auth service (8888)
+- ✅ CORS working between test app (3000) and auth service (9100)
 - ✅ Environment variables loaded in auth service
 - ✅ TypeScript errors resolved in test app
 - ✅ Complete OAuth login flow functional
 - ✅ Authentication state persistence across page refreshes
 - ✅ Automatic URL cleanup after OAuth callback
 - ✅ Proper JWT validation and cookie handling
+- ✅ Auto-detection of auth service URL (localhost:9100 vs production)
+- ✅ Helpful error messages when auth service is unreachable
 
 ### Key Technical Learnings
-1. **Cookie Domain for Localhost**: Use `.localhost` domain to share cookies across ports
-2. **HttpOnly Cookies**: Frontend cannot read httpOnly cookies - must use API calls to check auth state
-3. **Content-Type Headers**: Netlify Functions need explicit `Content-Type: application/json` headers
-4. **React Hook Dependencies**: Memoize configuration objects to prevent unnecessary re-renders
-5. **CORS for Development**: Centralized CORS middleware essential for localhost cross-port communication
+1. **Dedicated Auth Port**: Port 9100 for auth service avoids conflicts with other dev tools
+2. **Zero Config Package**: Auto-detects environment (localhost vs *.mavenmm.com)
+3. **Cookie Domain for Localhost**: Use `.localhost` domain to share cookies across ports
+4. **HttpOnly Cookies**: Frontend cannot read httpOnly cookies - must use API calls to check auth state
+5. **Content-Type Headers**: Netlify Functions need explicit `Content-Type: application/json` headers
+6. **React Hook Dependencies**: No longer needed with auto-detection!
+7. **CORS for Development**: Centralized CORS middleware essential for localhost cross-port communication
 
 ### 🎯 Deployment Readiness (v2.0)
 
@@ -169,30 +175,45 @@ The centralized SSO system is now complete and fully functional:
 
 ## Multi-Site Integration
 
-### Adding Auth to New Maven Apps
+### Adding Auth to New Maven Apps (v2.0.1+ Zero Config!)
 
 For any new Maven app (e.g., `app1.mavenmm.com`, `admin.mavenmm.com`):
 
 ```tsx
-// In your Maven app - just install and configure
+// In your Maven app - ZERO CONFIG NEEDED!
 import { useTeamworkAuth } from '@mavenmm/teamwork-auth';
 
-const authConfig = {
-  authServiceUrl: 'https://auth.mavenmm.com',
-  cookieDomain: '.mavenmm.com'  // Enables cross-subdomain auth
-};
-
 function App() {
-  const { user, isAuthenticated, logout } = useTeamworkAuth(authConfig);
+  // Auto-detects production (auth.mavenmm.com) vs local (localhost:9100)
+  const { user, isAuthenticated, logout, error } = useTeamworkAuth();
+
+  // Show helpful error if auth service is unreachable
+  if (error) {
+    return <div>{error}</div>;
+  }
+
   // No backend code needed!
+  return <div>Welcome {user?.firstName}!</div>;
 }
 ```
 
+**For local development:**
+```bash
+# Terminal 1 - Start auth service on port 9100
+cd auth-service/
+npm run dev
+
+# Terminal 2 - Start your Maven app
+npm run dev
+```
+
 ### Benefits of Centralized Approach
+- **Zero Configuration**: Auto-detects environment, no manual config needed
 - **Security**: Teamwork API tokens never leave `auth.mavenmm.com`
 - **Maintenance**: Update auth logic in one place for all apps
 - **Simplicity**: New apps need zero backend auth code
 - **Consistency**: Same user experience across all Maven properties
+- **Developer Experience**: Helpful error messages guide developers
 
 ## Security Architecture
 

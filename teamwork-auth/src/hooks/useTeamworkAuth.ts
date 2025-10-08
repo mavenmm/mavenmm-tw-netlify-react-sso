@@ -1,30 +1,167 @@
-import { useState, useEffect } from "react";
-import { LoginResult, User } from "../types";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { User } from "../types";
 
 export interface TeamworkAuthConfig {
-  authServiceUrl: string; // e.g., 'https://auth.yourcompany.com'
-  cookieDomain?: string;   // e.g., '.yourcompany.com'
+  authServiceUrl?: string; // Optional - auto-detects if not provided
+  domainKey?: string;      // Optional - domain authentication key (required for production)
 }
 
-export function useTeamworkAuth(config: TeamworkAuthConfig) {
-  if (!config.authServiceUrl) {
-    throw new Error(
-      'TeamworkAuth: authServiceUrl is required. Please provide the URL of your auth service (e.g., "https://auth.yourcompany.com")'
-    );
+/**
+ * Auto-detect the auth service URL based on environment
+ */
+function detectAuthServiceUrl(): string {
+  const hostname = window.location.hostname;
+
+  // Production: *.mavenmm.com domains use centralized auth service
+  if (hostname.endsWith('.mavenmm.com') || hostname === 'mavenmm.com') {
+    return 'https://auth.mavenmm.com';
   }
 
-  const authServiceUrl = config.authServiceUrl;
+  // Staging: *.netlify.app domains also use production auth service
+  if (hostname.endsWith('.netlify.app')) {
+    return 'https://auth.mavenmm.com';
+  }
+
+  // Development: localhost uses local auth service on port 9100
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:9100';
+  }
+
+  // Fallback for unknown environments
+  console.warn(
+    `TeamworkAuth: Unknown hostname "${hostname}". Defaulting to localhost:9100. ` +
+    'Please provide authServiceUrl explicitly if this is incorrect.'
+  );
+  return 'http://localhost:9100';
+}
+
+/**
+ * Get domain key from environment or config
+ */
+function getDomainKey(config?: string): string | undefined {
+  // Priority: explicit config > environment variable
+  if (config) return config;
+
+  // Check for environment variable (Vite uses VITE_ prefix)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env.VITE_DOMAIN_KEY || import.meta.env.DOMAIN_KEY;
+  }
+
+  // Check for process.env (other build tools)
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env.VITE_DOMAIN_KEY || process.env.DOMAIN_KEY;
+  }
+
+  return undefined;
+}
+
+/**
+ * Get common headers for auth requests
+ */
+function getAuthHeaders(domainKey?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (domainKey) {
+    headers["X-Domain-Key"] = domainKey;
+  }
+
+  return headers;
+}
+
+export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
+  // Auto-detect auth service URL if not provided
+  const authServiceUrl = config.authServiceUrl || detectAuthServiceUrl();
+  const domainKey = getDomainKey(config.domainKey);
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Access token management (stored in memory, NOT localStorage for security)
+  const accessTokenRef = useRef<string | null>(null);
+  const tokenExpiryRef = useRef<number>(0);
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  /**
+   * Store access token and schedule refresh
+   */
+  const storeAccessToken = useCallback((token: string, expiresIn: number) => {
+    accessTokenRef.current = token;
+    const expiryTime = Date.now() + (expiresIn * 1000);
+    tokenExpiryRef.current = expiryTime;
+
+    // Clear existing refresh timer
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
+    // Schedule token refresh 1 minute before expiry
+    const refreshTime = Math.max((expiresIn - 60) * 1000, 0);
+    refreshTimerRef.current = setTimeout(() => {
+      refreshToken();
+    }, refreshTime);
+
+    console.log(`Access token stored, expires in ${expiresIn}s, refresh scheduled in ${refreshTime / 1000}s`);
+  }, []);
+
+  /**
+   * Clear access token and cancel refresh timer
+   */
+  const clearAccessToken = useCallback(() => {
+    accessTokenRef.current = null;
+    tokenExpiryRef.current = 0;
+
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Refresh access token using refresh token (httpOnly cookie)
+   */
+  const refreshToken = useCallback(async () => {
+    try {
+      console.log('Refreshing access token...');
+
+      const response = await fetch(`${authServiceUrl}/.netlify/functions/refresh`, {
+        method: "POST",
+        headers: getAuthHeaders(domainKey),
+        credentials: "include", // Send httpOnly cookie
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token refresh failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Store new access token
+      storeAccessToken(data.accessToken, data.expiresIn);
+
+      console.log('Access token refreshed successfully');
+    } catch (err) {
+      console.error('Token refresh failed:', err);
+      // Clear auth state on refresh failure
+      clearAccessToken();
+      setIsAuthenticated(false);
+      setUser(null);
+      localStorage.removeItem("maven_sso_user");
+    }
+  }, [authServiceUrl, domainKey, storeAccessToken, clearAccessToken]);
+
+  /**
+   * Login with OAuth code
+   */
   const login = async (code: string) => {
     try {
       const options = {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          ...getAuthHeaders(domainKey),
           "code": code,
         },
         credentials: "include" as RequestCredentials,
@@ -32,6 +169,7 @@ export function useTeamworkAuth(config: TeamworkAuthConfig) {
 
       // Record the code to prevent reuse
       localStorage.setItem("maven_sso_code", JSON.stringify(code));
+
       const res = await fetch(`${authServiceUrl}/.netlify/functions/login`, options);
 
       if (!res.ok) {
@@ -41,38 +179,145 @@ export function useTeamworkAuth(config: TeamworkAuthConfig) {
         } catch {
           errorDetails = await res.text();
         }
-        throw new Error(
-          `Login failed with status: ${res.status}`
-        );
+        throw new Error(`Login failed with status: ${res.status}`);
       }
 
       const data = await res.json();
-      const { twUser } = data;
 
-      setUser(twUser);
+      // Store access token
+      storeAccessToken(data.accessToken, data.expiresIn);
+
+      // Store user data
+      setUser(data.user);
       setIsAuthenticated(true);
+      localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
 
-      // Save user data to localStorage
-      localStorage.setItem("maven_sso_user", JSON.stringify(twUser));
-
-      // Clean up URL by removing OAuth code parameter
+      // Clean up URL
       cleanUpUrl();
 
-      return { twUser };
+      return { user: data.user };
     } catch (err) {
       throw new Error("Failed to log in");
     }
   };
 
+  /**
+   * Check authentication status
+   */
+  const checkAuth = useCallback(async () => {
+    try {
+      // If we have a valid access token, use it
+      if (accessTokenRef.current && tokenExpiryRef.current > Date.now()) {
+        const response = await fetch(`${authServiceUrl}/.netlify/functions/checkAuth`, {
+          method: "GET",
+          headers: {
+            ...getAuthHeaders(domainKey),
+            "Authorization": `Bearer ${accessTokenRef.current}`,
+          },
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.authenticated === true) {
+            setIsAuthenticated(true);
+            cleanUpUrl();
+
+            // Restore user data from localStorage
+            const prevUser = localStorage.getItem("maven_sso_user");
+            if (prevUser) {
+              try {
+                const userData = JSON.parse(prevUser);
+                setUser(userData);
+              } catch (error) {
+                console.error('Failed to parse user data:', error);
+              }
+            }
+            return;
+          }
+        }
+      }
+
+      // No valid access token - try to refresh
+      await refreshToken();
+
+      // After refresh, check again
+      if (accessTokenRef.current) {
+        const response = await fetch(`${authServiceUrl}/.netlify/functions/checkAuth`, {
+          method: "GET",
+          headers: {
+            ...getAuthHeaders(domainKey),
+            "Authorization": `Bearer ${accessTokenRef.current}`,
+          },
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.authenticated === true) {
+            setIsAuthenticated(true);
+            cleanUpUrl();
+
+            const prevUser = localStorage.getItem("maven_sso_user");
+            if (prevUser) {
+              try {
+                const userData = JSON.parse(prevUser);
+                setUser(userData);
+              } catch (error) {
+                console.error('Failed to parse user data:', error);
+              }
+            }
+            return;
+          }
+        }
+      }
+
+      // Not authenticated
+      setIsAuthenticated(false);
+      setUser(null);
+      clearAccessToken();
+      localStorage.removeItem("maven_sso_user");
+
+    } catch (err) {
+      setIsAuthenticated(false);
+      setUser(null);
+      clearAccessToken();
+      localStorage.removeItem("maven_sso_user");
+
+      // Check if this is a connection error
+      const isConnectionError = err instanceof TypeError && err.message.includes('fetch');
+
+      if (isConnectionError && authServiceUrl.includes('localhost:9100')) {
+        const errorMessage =
+          '⚠️ Auth service not running on localhost:9100\n\n' +
+          'To start the auth service:\n' +
+          '  cd auth-service/\n' +
+          '  npm run dev\n\n' +
+          'Or provide a custom authServiceUrl in the config.';
+
+        setError(errorMessage);
+        console.error(errorMessage);
+      } else if (isConnectionError) {
+        const errorMessage = `⚠️ Cannot connect to auth service at ${authServiceUrl}`;
+        setError(errorMessage);
+        console.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [authServiceUrl, domainKey, refreshToken, clearAccessToken, storeAccessToken]);
+
+  /**
+   * Clean up URL parameters after OAuth
+   */
   const cleanUpUrl = () => {
     try {
       const url = new URL(window.location.href);
-
-      // OAuth parameters that should be cleaned up after successful auth
       const oauthParams = ['code', 'state', 'client_id', 'redirect_uri', 'scope', 'response_type'];
       let hasOAuthParams = false;
 
-      // Check if any OAuth params exist
       oauthParams.forEach(param => {
         if (url.searchParams.has(param)) {
           hasOAuthParams = true;
@@ -80,12 +325,9 @@ export function useTeamworkAuth(config: TeamworkAuthConfig) {
       });
 
       if (hasOAuthParams) {
-        // Remove all OAuth parameters
         oauthParams.forEach(param => {
           url.searchParams.delete(param);
         });
-
-        // Update URL without page reload
         window.history.replaceState({}, document.title, url.toString());
       }
     } catch (error) {
@@ -93,131 +335,63 @@ export function useTeamworkAuth(config: TeamworkAuthConfig) {
     }
   };
 
+  /**
+   * Logout
+   */
   const logout = async () => {
     try {
-      // Call external auth service logout endpoint
+      const headers: Record<string, string> = getAuthHeaders(domainKey);
+
+      // Include access token in logout request if available
+      if (accessTokenRef.current) {
+        headers["Authorization"] = `Bearer ${accessTokenRef.current}`;
+      }
+
       await fetch(`${authServiceUrl}/.netlify/functions/logout`, {
         method: "GET",
+        headers,
         credentials: "include",
       });
 
-      // Clear all user data
+      // Clear all state
       setUser(null);
       setIsAuthenticated(false);
-
-      // Clear localStorage
+      clearAccessToken();
       localStorage.removeItem("maven_sso_user");
       localStorage.removeItem("maven_sso_code");
 
-      // Clear cookies - the auth service handles domain cookies
-      document.cookie =
-        "maven_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-
-      // For non-localhost environments, also clear with configured domain
-      if (window.location.hostname !== "localhost" && config.cookieDomain) {
-        document.cookie = `maven_auth_token=; path=/; domain=${config.cookieDomain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-      }
     } catch (error) {
       console.error("Logout error:", error);
       // Still clear local state even if API call fails
       setUser(null);
       setIsAuthenticated(false);
+      clearAccessToken();
       localStorage.removeItem("maven_sso_user");
     }
   };
 
+  // Check authentication on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Make API call to validate auth state with external auth service
-        const response = await fetch(`${authServiceUrl}/.netlify/functions/checkAuth`, {
-          method: "GET",
-          credentials: "include",
-        });
+    checkAuth();
 
-        if (response.ok) {
-          const contentType = response.headers.get("content-type");
-
-          if (!contentType || !contentType.includes("application/json")) {
-            setIsAuthenticated(false);
-            setUser(null);
-            localStorage.removeItem("maven_sso_user");
-            return;
-          }
-
-          const data = await response.json();
-
-          if (data.authenticated === true) {
-            setIsAuthenticated(true);
-
-            // Clean up URL since we're authenticated via cookie
-            cleanUpUrl();
-
-            // Check if we already have user data in localStorage
-            const prevUser = localStorage.getItem("maven_sso_user");
-
-            if (prevUser) {
-              try {
-                const userData = JSON.parse(prevUser);
-                setUser(userData);
-              } catch (error) {
-                localStorage.removeItem("maven_sso_user");
-                // Create basic user as fallback
-                const basicUser: User = {
-                  id: data.userId || data._id || "temp-user",
-                  firstName: "Teamwork",
-                  lastName: "User",
-                  email: "user@teamwork.example",
-                  avatar: "",
-                  company: {
-                    id: 1,
-                    name: "Teamwork",
-                    logo: "",
-                  },
-                };
-                localStorage.setItem("maven_sso_user", JSON.stringify(basicUser));
-                setUser(basicUser);
-              }
-            } else {
-              // Create a basic user object since we don't have one
-              const basicUser: User = {
-                id: data.userId || data._id || "temp-user",
-                firstName: "Teamwork",
-                lastName: "User",
-                email: "user@teamwork.example",
-                avatar: "",
-                company: {
-                  id: 1,
-                  name: "Teamwork",
-                  logo: "",
-                },
-              };
-
-              localStorage.setItem("maven_sso_user", JSON.stringify(basicUser));
-              setUser(basicUser);
-            }
-          } else {
-            setIsAuthenticated(false);
-            setUser(null);
-            localStorage.removeItem("maven_sso_user");
-          }
-        } else {
-          setIsAuthenticated(false);
-          setUser(null);
-          localStorage.removeItem("maven_sso_user");
-        }
-      } catch (error) {
-        setIsAuthenticated(false);
-        setUser(null);
-        localStorage.removeItem("maven_sso_user");
-      } finally {
-        setLoading(false);
+    // Cleanup on unmount
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
       }
     };
+  }, [checkAuth]);
 
-    // Always validate with server - httpOnly cookies are handled automatically by browser
-    checkAuth();
-  }, [authServiceUrl]); // Add authServiceUrl as dependency
-
-  return { user, setUser, loading, isAuthenticated, login, logout };
+  return {
+    user,
+    setUser,
+    loading,
+    isAuthenticated,
+    login,
+    logout,
+    error,
+    authServiceUrl,
+    // Expose method to get current access token for API calls
+    getAccessToken: () => accessTokenRef.current,
+  };
 }

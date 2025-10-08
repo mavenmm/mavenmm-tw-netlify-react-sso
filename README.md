@@ -1,77 +1,56 @@
 # Teamwork Auth 🚀 v2.0
 
-A centralized React package for Teamwork authentication using an external auth service. **No more copying auth logic between apps!**
+**High-security centralized authentication for Maven Marketing applications**
 
-## Architecture (v2.0) - Centralized SSO System
+A React package and auth service providing enterprise-grade Teamwork SSO with dual-token architecture, domain authentication keys, and comprehensive security features.
+
+## Architecture v2.0 - High Security SSO
 
 ```mermaid
 graph TB
-    A[app1.mavenmm.com] --> D[auth.mavenmm.com]
-    B[admin.mavenmm.com] --> D
-    C[dashboard.mavenmm.com] --> D
+    A[app1.mavenmm.com] -->|Access Token + Domain Key| D[auth.mavenmm.com]
+    B[admin.mavenmm.com] -->|Access Token + Domain Key| D
+    C[staging.netlify.app] -->|Access Token + Domain Key| D
+    D -->|Refresh Token Cookie| A
+    D -->|Refresh Token Cookie| B
+    D -->|Refresh Token Cookie| C
     D --> E[Teamwork API]
-
-    A -.->|Shared Cookies| B
-    B -.->|Shared Cookies| C
-    A -.->|Shared Cookies| C
 ```
 
 ### Components:
-1. **Frontend Package** (`@mavenmm/teamwork-auth`): React components and hooks for any Maven app
-2. **Centralized Auth Service** (`auth.mavenmm.com`): Handles all authentication logic and Teamwork API communication
-3. **Maven Apps** (`*.mavenmm.com`): Your applications that need authentication
+1. **Frontend Package** (`@mavenmm/teamwork-auth`): React hooks and components
+2. **Auth Service** (`auth.mavenmm.com`): Centralized authentication server
+3. **Dual-Token System**: 15-min access tokens + 7-day refresh tokens
+4. **Domain Keys**: Unique authentication keys per application
 
-### Benefits:
-- **🔒 Security**: Teamwork API tokens isolated to auth service only
-- **🚀 Zero Backend**: Apps just install npm package - no server code needed
-- **🌐 SSO**: Login once, authenticated across all `*.mavenmm.com` apps
-- **🔧 Maintainable**: Update auth logic in one place for all apps
-- **⚡ Fast Setup**: New apps get auth in minutes, not hours
+### Security Features:
+- 🔐 **Short-lived tokens**: 15-minute access tokens reduce exposure window
+- 🔄 **Token rotation**: Refresh tokens are single-use
+- 🔑 **Domain authentication**: Prevents domain spoofing attacks
+- 🚫 **Token blacklisting**: Immediate revocation on logout
+- ⚡ **Rate limiting**: Brute force protection
+- 🛡️ **CSP headers**: XSS protection
 
-## Installation
+## Quick Start
+
+### Installation
 
 ```bash
-npm install @mavenmm/teamwork-auth @teamwork/login-button react-router-dom
+npm install @mavenmm/teamwork-auth
 ```
 
-## Available Exports
+### Basic Usage
 
 ```tsx
-// React Components & Hooks (v2.0 - Centralized Auth Service)
-import {
-  AuthProvider,
-  useAuthContext,
-  useTeamworkAuth,
-  Login,
-  type TeamworkAuthConfig
-} from '@mavenmm/teamwork-auth';
-```
-
-**Requirements:**
-- React Router DOM v6+ (peer dependency)
-- External auth service running at `auth.mavenmm.com`
-
-## Quick Start (v2.0 - External Auth Service)
-
-### 1. Using the hook directly (Recommended)
-```tsx
-import React from 'react';
-import { useTeamworkAuth, Login, type TeamworkAuthConfig } from '@mavenmm/teamwork-auth';
-
-const authConfig: TeamworkAuthConfig = {
-  authServiceUrl: 'https://auth.mavenmm.com',
-  cookieDomain: '.mavenmm.com'
-};
+import { useTeamworkAuth } from '@mavenmm/teamwork-auth';
 
 function App() {
-  const { user, loading, isAuthenticated, logout } = useTeamworkAuth(authConfig);
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const { user, isAuthenticated, logout, getAccessToken } = useTeamworkAuth({
+    domainKey: process.env.VITE_DOMAIN_KEY
+  });
 
   if (!isAuthenticated) {
-    return <Login />;
+    return <LoginScreen />;
   }
 
   return (
@@ -83,132 +62,125 @@ function App() {
 }
 ```
 
-### 2. Using AuthProvider (Alternative)
-```tsx
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider, useAuthContext } from '@mavenmm/teamwork-auth';
-
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/*" element={<AuthenticatedApp />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-// AuthProvider must be inside Router context (inside a Route element)
-function AuthenticatedApp() {
-  return (
-    <AuthProvider authServiceUrl="https://auth.mavenmm.com">
-      <Routes>
-        <Route path="/home" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-      </Routes>
-    </AuthProvider>
-  );
-}
-
-function Dashboard() {
-  const { user, loading, isAuthenticated, logout } = useAuthContext();
-
-  if (loading) return <div>Loading...</div>;
-
-  return (
-    <div>
-      <h1>Welcome, {user?.firstName}!</h1>
-      <button onClick={logout}>Logout</button>
-    </div>
-  );
-}
-```
-
-### 3. No Backend Code Needed! 🎉
-
-**That's it!** No Netlify Functions, no environment variables, no backend setup required in your app.
-
-The external auth service at `auth.mavenmm.com` handles all the backend logic:
-- Teamwork OAuth flow
-- JWT token management
-- Cookie handling for `.mavenmm.com` subdomains
-- Authentication validation
-
-## Cookie Domain Configuration 🍪
-
-For subdomain sharing (e.g., sharing auth between `app.yourdomain.com` and `admin.yourdomain.com`):
-
-```bash
-# In your .env file
-VITE_COOKIE_DOMAIN=.yourdomain.com
-```
-
-This allows the authentication cookie to work across all `*.yourdomain.com` subdomains.
-
-**Behavior:**
-- **Localhost**: No domain set (works with any localhost port)
-- **Production with VITE_COOKIE_DOMAIN**: Cookie shared across subdomains
-- **Production without VITE_COOKIE_DOMAIN**: Cookie only works on exact domain
-
-## Features
-
-- 🔐 **Teamwork OAuth** - Uses official Teamwork login button
-- 🍪 **Cookie-based Auth** - Secure authentication with HttpOnly cookies
-- 🌐 **Subdomain Support** - Configurable cookie sharing across subdomains
-- 🔄 **Auto-redirect** - Smart redirect handling between apps
-- 📱 **TypeScript** - Full type safety
-- ⚡ **Netlify Functions** - Ready-to-use serverless auth handlers
-- 🎯 **Vite Optimized** - Built specifically for Vite+React+Netlify stack
-
-## Important Notes 📝
-
-**Router Requirement**: The `AuthProvider` uses React Router hooks (`useNavigate`, `useLocation`) and must be placed inside a Router context. Specifically, it should be inside a Route element, not as a direct child of `<Router>`.
-
-**Environment Variables**: You need both client-side (`VITE_*`) and server-side variables. The client-side variables are for React components, and server-side variables are for Netlify Functions.
-
-## API Reference
-
-### React Components
-
-#### `useTeamworkAuth(config)`
+### Making API Calls
 
 ```tsx
-const {
-  user,           // User | null
-  setUser,        // (user: User | null) => void
-  loading,        // boolean
-  isAuthenticated, // boolean
-  login,          // (code: string) => Promise<{twUser: User}>
-  logout          // () => Promise<void>
-} = useTeamworkAuth({
-  authServiceUrl: 'https://auth.mavenmm.com',
-  cookieDomain: '.mavenmm.com'
+const { getAccessToken } = useTeamworkAuth();
+
+// Access token automatically refreshes
+const response = await fetch('/api/data', {
+  headers: {
+    'Authorization': `Bearer ${getAccessToken()}`,
+    'X-Domain-Key': process.env.VITE_DOMAIN_KEY,
+  },
+  credentials: 'include', // Required for refresh token cookie
 });
 ```
 
-#### `<Login>`
+## What's New in v2.0
 
-```tsx
-<Login />  // Uses environment variables for configuration
+### 🔐 Security Enhancements
+- **Dual-token strategy**: Reduced token exposure time (15min vs 2 weeks)
+- **Domain authentication keys**: Each domain requires unique secret key
+- **Explicit whitelisting**: Both `*.mavenmm.com` and `*.netlify.app` require registration
+- **Token rotation**: Refresh tokens are single-use
+- **Rate limiting**: Protection against brute force attacks
+- **Enhanced headers**: Content-Security-Policy and security headers
+
+### ⚡ Developer Experience
+- **Auto-refresh**: Tokens refresh automatically 1 minute before expiry
+- **Zero config**: Auto-detects localhost vs production
+- **Better errors**: Helpful error messages guide developers
+- **TypeScript**: Full type safety throughout
+
+### 🌐 Cross-Domain Support
+Works across:
+- `*.mavenmm.com` (production)
+- `*.netlify.app` (staging)
+- `localhost:*` (development)
+
+## Migration from v1
+
+**⚠️ Breaking Changes**: v2 uses a completely new authentication architecture.
+
+See [MIGRATION_V2.md](MIGRATION_V2.md) for detailed migration guide.
+
+**Key changes:**
+1. Access tokens now in `Authorization` header (not just cookies)
+2. Domain keys required via `X-Domain-Key` header
+3. Each domain must be registered in auth service
+4. Token refresh handled automatically by hook
+
+## Configuration
+
+### Environment Variables
+
+**Your Application** (`.env`):
+```bash
+# Domain authentication key (get from auth service team)
+VITE_DOMAIN_KEY=dmk_your_app_secret_key
 ```
 
-### Auth Service Endpoints (auth.mavenmm.com)
+**Auth Service** (`auth-service/.env`):
+```bash
+# Teamwork OAuth credentials
+VITE_CLIENT_ID=your_teamwork_client_id
+VITE_CLIENT_SECRET=your_teamwork_client_secret
+VITE_REDIRECT_URI=https://your-app.mavenmm.com
 
-#### `POST /.netlify/functions/login`
-- **Headers**: `code` (OAuth authorization code)
-- **Response**: `{ twUser: User }`
-- **Sets**: `maven_auth_token` cookie (HttpOnly, secure)
+# JWT secrets
+JWT_KEY=your_jwt_secret
+JWT_REFRESH_KEY=your_refresh_secret
 
-#### `GET /.netlify/functions/logout`
-- **Response**: `{ success: true }`
-- **Clears**: `maven_auth_token` cookie
+# Domain keys for registered apps
+DOMAIN_KEY_APP1=dmk_app1_secret
+DOMAIN_KEY_ADMIN=dmk_admin_secret
+```
 
-#### `GET /.netlify/functions/checkAuth`
-- **Response**: `{ authenticated: boolean, userId?: string }`
-- **Validates**: `maven_auth_token` JWT cookie
+## API Reference
 
-### Types
+### `useTeamworkAuth(config?)`
+
+Main authentication hook with auto-refresh capabilities.
+
+```tsx
+const {
+  user,              // User | null
+  isAuthenticated,   // boolean
+  loading,           // boolean
+  error,             // string | null
+  login,             // (code: string) => Promise<{user: User}>
+  logout,            // () => Promise<void>
+  getAccessToken,    // () => string | null
+  authServiceUrl,    // string
+} = useTeamworkAuth({
+  domainKey: string,        // Optional - reads from env
+  authServiceUrl: string,   // Optional - auto-detects
+});
+```
+
+**Features:**
+- ✅ Automatic token refresh (1 min before expiry)
+- ✅ Handles token rotation
+- ✅ Stores access token securely in memory
+- ✅ Manages refresh token via httpOnly cookie
+- ✅ Environment auto-detection
+
+### Configuration Options
+
+```tsx
+interface TeamworkAuthConfig {
+  // Optional - domain authentication key
+  // Falls back to VITE_DOMAIN_KEY env variable
+  domainKey?: string;
+
+  // Optional - auth service URL
+  // Auto-detects: localhost:9100 vs auth.mavenmm.com
+  authServiceUrl?: string;
+}
+```
+
+### User Type
 
 ```tsx
 interface User {
@@ -225,179 +197,122 @@ interface User {
 }
 ```
 
-## Multi-Site Integration Example
+## Auth Service Endpoints
 
-Adding auth to a new Maven app (e.g., `app1.mavenmm.com`):
+All endpoints require:
+- `Origin` header (must be registered)
+- `X-Domain-Key` header (domain authentication key)
 
-```tsx
-// Just install and configure - no backend code needed!
-import { useTeamworkAuth, Login } from '@mavenmm/teamwork-auth';
+### `POST /.netlify/functions/login`
+- **Headers**: `code` (OAuth code), `X-Domain-Key`
+- **Response**: `{ accessToken, expiresIn, user, redirectTo }`
+- **Sets Cookie**: `maven_refresh_token` (httpOnly, 7 days)
 
-const authConfig = {
-  authServiceUrl: 'https://auth.mavenmm.com',
-  cookieDomain: '.mavenmm.com'  // Enables SSO across subdomains
-};
+### `POST /.netlify/functions/refresh`
+- **Headers**: `X-Domain-Key`
+- **Cookie**: `maven_refresh_token`
+- **Response**: `{ accessToken, expiresIn, tokenType }`
+- **Note**: Rotates refresh token (single-use)
 
-function App() {
-  const { user, isAuthenticated, logout } = useTeamworkAuth(authConfig);
+### `GET /.netlify/functions/checkAuth`
+- **Headers**: `Authorization: Bearer <token>`, `X-Domain-Key`
+- **Response**: `{ authenticated, userId, expiresAt }`
 
-  if (!isAuthenticated) return <Login />;
+### `GET /.netlify/functions/logout`
+- **Headers**: `Authorization: Bearer <token>`, `X-Domain-Key`
+- **Effect**: Blacklists both access and refresh tokens
+- **Response**: `{ success: true }`
 
-  return (
-    <div>
-      <h1>Welcome to app1.mavenmm.com, {user?.firstName}!</h1>
-      <button onClick={logout}>Logout</button>
-    </div>
-  );
-}
-```
+## Security Best Practices
 
-**That's it!** The user will be automatically authenticated if they're logged in to any other Maven app.
+1. **Domain Keys**: Never commit domain keys to git
+2. **HTTPS Only**: Use HTTPS in production
+3. **Token Storage**: Access tokens stored in memory (not localStorage)
+4. **Refresh Tokens**: httpOnly cookies prevent XSS access
+5. **Rate Limiting**: Automatic protection against brute force
+6. **Token Rotation**: Refresh tokens are single-use
+7. **Blacklisting**: Logout immediately revokes tokens
+
+See [SECURITY.md](SECURITY.md) for comprehensive security documentation.
+
+## Documentation
+
+- **[MIGRATION_V2.md](MIGRATION_V2.md)** - Upgrading from v1 to v2
+- **[INTEGRATION.md](INTEGRATION.md)** - Adding auth to new apps
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deploying auth service
+- **[LOCAL_TESTING.md](LOCAL_TESTING.md)** - Local development setup
+- **[SECURITY.md](SECURITY.md)** - Security architecture and best practices
 
 ## Troubleshooting
 
-### Common Issues
-
-#### 🚫 "User not authenticated" but should be logged in
-
-**Symptoms**: App shows login screen even though user logged in elsewhere
-**Causes**:
-- Incorrect `cookieDomain` configuration
-- App not on `*.mavenmm.com` subdomain
-- Auth service unreachable
-
-**Solutions**:
-```tsx
-// 1. Check cookie domain configuration
-const authConfig = {
-  cookieDomain: '.mavenmm.com'  // Must include the dot!
-};
-
-// 2. Verify subdomain
-// ✅ Good: app1.mavenmm.com, admin.mavenmm.com
-// ❌ Bad: app1.mavenmarketing.com, localhost:3000
-
-// 3. Test auth service
-fetch('https://auth.mavenmm.com/.netlify/functions/checkAuth')
-  .then(res => console.log('Auth service status:', res.status));
+### Domain Not Registered
 ```
-
-#### 🔄 Login button doesn't work
-
-**Symptoms**: Clicking login does nothing or shows errors
-**Causes**:
-- CORS issues between app and auth service
-- Auth service environment variables missing
-- Teamwork OAuth app misconfigured
-
-**Solutions**:
-```bash
-# 1. Check browser console for CORS errors
-# 2. Verify auth service is deployed and accessible
-curl https://auth.mavenmm.com/.netlify/functions/checkAuth
-
-# 3. Check Teamwork OAuth app redirect URIs include your app domain
+Error: Domain validation failed
+Message: Domain not registered. Contact security@mavenmm.com
 ```
+**Solution**: Add your domain to `functions/config/domains.ts`
 
-#### 🍪 Authentication doesn't persist after page refresh
-
-**Symptoms**: User logged out after browser refresh
-**Causes**:
-- Cookies not being set properly
-- Incorrect cookie domain
-- Auth service issues
-
-**Solutions**:
-```tsx
-// Check browser dev tools > Application > Cookies
-// Should see 'maven_auth_token' cookie for .mavenmm.com domain
-
-// Debug authentication status
-const { user, loading, isAuthenticated } = useTeamworkAuth(authConfig);
-console.log('Auth debug:', { user, loading, isAuthenticated });
+### Invalid Domain Key
 ```
-
-#### ⚠️ CORS errors in browser console
-
-**Symptoms**: Network errors when calling auth service
-**Causes**:
-- Auth service CORS not configured for your domain
-- Using HTTP instead of HTTPS in production
-
-**Solutions**:
-```bash
-# 1. Ensure your app domain is added to auth service CORS allowlist
-# 2. Use HTTPS in production (required for cookies)
-# 3. Check Origin header matches your domain exactly
+Error: Invalid domain key
 ```
+**Solution**: Check `VITE_DOMAIN_KEY` environment variable matches registered key
 
-#### 🔐 Environment variable issues
+### Token Expired
+The hook automatically refreshes tokens. If you see this error:
+1. Check that `credentials: 'include'` is set in fetch requests
+2. Verify refresh token cookie is being sent
+3. Check auth service is accessible
 
-**Symptoms**: Login process fails with authentication errors
-**Causes**:
-- Missing or incorrect Teamwork OAuth credentials
-- JWT secrets not configured
-
-**Solutions**:
-```bash
-# Auth service needs these environment variables:
-VITE_CLIENT_ID=your_teamwork_client_id
-VITE_CLIENT_SECRET=your_teamwork_client_secret
-VITE_REDIRECT_URI=https://your-app-domain.com
-JWT_KEY=secure_random_jwt_secret
-
-# Apps only need auth service URL (no secrets):
-const authConfig = {
-  authServiceUrl: 'https://auth.mavenmm.com'
-};
+### Auth Service Unreachable
 ```
-
-### Debug Mode
-
-Enable detailed logging to troubleshoot issues:
-
-```tsx
-// Temporarily add for debugging
-const authConfig = {
-  authServiceUrl: 'https://auth.mavenmm.com',
-  cookieDomain: '.mavenmm.com',
-  debug: true  // Enables console logging
-};
+⚠️ Auth service not running on localhost:9100
 ```
-
-### Getting Help
-
-1. **Check browser console** for error messages
-2. **Verify network requests** in browser dev tools
-3. **Test auth service directly** with curl commands
-4. **Review documentation**:
-   - `INTEGRATION.md` - Step-by-step integration guide
-   - `SECURITY.md` - Security best practices
-   - `DEPLOYMENT.md` - Auth service deployment
+**Solution**: Start auth service: `cd auth-service && npm run dev`
 
 ## Project Structure
 
 ```
-@mavenmm/teamwork-auth/
-├── src/                    # Frontend package source
-│   ├── hooks/
-│   │   └── useTeamworkAuth.ts
-│   ├── components/
-│   │   └── Login.tsx
-│   └── providers/
-│       └── AuthProvider.tsx
-├── auth-service/           # Centralized auth service
-│   ├── functions/
-│   │   ├── login.ts
-│   │   ├── logout.ts
-│   │   └── checkAuth.ts
-│   └── middleware/
-├── test-app/              # Local testing app
-├── INTEGRATION.md         # Integration guide
-├── SECURITY.md           # Security documentation
-└── DEPLOYMENT.md         # Deployment guide
+├── teamwork-auth/           # NPM package source
+│   └── src/
+│       ├── hooks/
+│       │   └── useTeamworkAuth.ts
+│       └── types/
+│           └── index.ts
+├── functions/               # Auth service (Netlify Functions)
+│   ├── config/
+│   │   └── domains.ts       # Domain registry
+│   ├── middleware/
+│   │   ├── validateDomain.ts
+│   │   ├── rateLimit.ts
+│   │   └── cors.ts
+│   ├── utils/
+│   │   ├── tokenManager.ts  # Token creation/validation
+│   │   └── securityHeaders.ts
+│   ├── login.ts
+│   ├── refresh.ts           # NEW in v2
+│   ├── checkAuth.ts
+│   └── logout.ts
+├── MIGRATION_V2.md          # v1 → v2 migration guide
+├── INTEGRATION.md           # Integration guide
+├── DEPLOYMENT.md            # Deployment guide
+├── SECURITY.md              # Security documentation
+└── LOCAL_TESTING.md         # Local development
+
 ```
+
+## Contributing
+
+This is an internal Maven Marketing package. For questions or issues:
+
+1. Check [MIGRATION_V2.md](MIGRATION_V2.md) for common issues
+2. Review [SECURITY.md](SECURITY.md) for security guidelines
+3. Contact the platform team
+
+## License
+
+Internal use only - Maven Marketing
 
 ---
 
-Made with ❤️ by Maven Marketing
+**Need help?** See [MIGRATION_V2.md](MIGRATION_V2.md) or contact the platform team.

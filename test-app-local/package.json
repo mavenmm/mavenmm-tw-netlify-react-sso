@@ -1,14 +1,13 @@
 {
-  "name": "teamwork-auth-test-app",
+  "name": "test-app-local",
   "private": true,
   "version": "0.0.0",
+  "description": "Test app using local auth-service + local package",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:prod": "VITE_USE_PRODUCTION=true vite",
+    "dev": "vite --port 3000",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "setup": "cd .. && npm run build && cd test-app && npm link ../dist"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@mavenmm/teamwork-auth": "file:../teamwork-auth",

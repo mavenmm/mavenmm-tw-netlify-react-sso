@@ -55,7 +55,7 @@ npm install
 npm run dev
 ```
 
-✅ **Auth service should be running at: `http://localhost:8888`**
+✅ **Auth service should be running at: `http://localhost:9100`**
 
 ## 🚀 Step 2: Start Everything with One Command
 
@@ -70,7 +70,7 @@ npm run test:local
 
 This will:
 1. Build the package
-2. Start auth service at `localhost:8888`
+2. Start auth service at `localhost:9100`
 3. Start test app at `localhost:3000`
 
 ### Option B: Manual Setup (Alternative)
@@ -88,7 +88,7 @@ npm install && npm run dev
 ```
 
 ✅ **Both services should be running:**
-- **Auth service**: `http://localhost:8888`
+- **Auth service**: `http://localhost:9100`
 - **Test app**: `http://localhost:3000`
 
 ## 🎯 Step 3: Test Authentication Flow
@@ -105,7 +105,7 @@ npm install && npm run dev
 ### 🔄 OAuth Flow Details:
 1. **Frontend** → Click login → Teamwork OAuth
 2. **Teamwork** → Redirect to `localhost:3000?code=ABC123`
-3. **Frontend** → Extract code from URL → Send to auth service at `localhost:8888/functions/login`
+3. **Frontend** → Extract code from URL → Send to auth service at `localhost:9100/functions/login`
 4. **Auth Service** → Exchange code for token → Set cookie → Return user data
 5. **Frontend** → Receive user data → Show authenticated state
 
@@ -120,9 +120,9 @@ npm install && npm run dev
 - ✅ Refresh page maintains auth state
 
 ### Browser Network Tab:
-- ✅ Calls to `localhost:8888/functions/login`
-- ✅ Calls to `localhost:8888/functions/checkAuth`
-- ✅ Calls to `localhost:8888/functions/logout`
+- ✅ Calls to `localhost:9100/functions/login`
+- ✅ Calls to `localhost:9100/functions/checkAuth`
+- ✅ Calls to `localhost:9100/functions/logout`
 
 ## 🐛 Troubleshooting
 

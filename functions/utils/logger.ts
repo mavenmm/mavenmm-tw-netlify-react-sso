@@ -18,8 +18,12 @@ const colors = {
 
 /**
  * Sanitizes sensitive data from objects before logging
+ * Prevents circular references and infinite recursion
  */
-function sanitize(data: any): any {
+function sanitize(data: any, depth = 0, seen: Set<any> = new Set()): any {
+  // Prevent infinite recursion
+  if (depth > 10) return '[Max Depth Exceeded]';
+
   if (!data) return data;
 
   if (typeof data === 'string') {
@@ -34,7 +38,11 @@ function sanitize(data: any): any {
     return data;
   }
 
-  if (typeof data === 'object') {
+  if (typeof data === 'object' && data !== null) {
+    // Prevent circular references
+    if (seen.has(data)) return '[Circular Reference]';
+    seen.add(data);
+
     const sanitized = Array.isArray(data) ? [] : {};
     const sensitiveKeys = [
       'access_token',
@@ -54,8 +62,8 @@ function sanitize(data: any): any {
 
       if (isSensitive) {
         sanitized[key] = '[REDACTED]';
-      } else if (typeof value === 'object') {
-        sanitized[key] = sanitize(value);
+      } else if (typeof value === 'object' && value !== null) {
+        sanitized[key] = sanitize(value, depth + 1, seen);
       } else {
         sanitized[key] = value;
       }
@@ -68,6 +76,13 @@ function sanitize(data: any): any {
 }
 
 /**
+ * Wrapper to create a fresh sanitize call for each item
+ */
+function sanitizeItem(item: any): any {
+  return sanitize(item, 0, new Set());
+}
+
+/**
  * Logger interface that respects production environment
  */
 export const logger = {
@@ -77,7 +92,7 @@ export const logger = {
    */
   debug: (...args: any[]) => {
     if (!isProd) {
-      console.log(colors.blue, '[DEBUG]', colors.reset, ...args.map(sanitize));
+      console.log(colors.blue, '[DEBUG]', colors.reset, ...args.map(sanitizeItem));
     }
   },
 
@@ -86,9 +101,9 @@ export const logger = {
    */
   info: (...args: any[]) => {
     if (isProd) {
-      console.info('[INFO]', ...args.map(sanitize));
+      console.info('[INFO]', ...args.map(sanitizeItem));
     } else {
-      console.log(colors.green, '[INFO]', colors.reset, ...args.map(sanitize));
+      console.log(colors.green, '[INFO]', colors.reset, ...args.map(sanitizeItem));
     }
   },
 
@@ -96,14 +111,14 @@ export const logger = {
    * Warning logs - always shown, always sanitized
    */
   warn: (...args: any[]) => {
-    console.warn(colors.yellow, '[WARN]', colors.reset, ...args.map(sanitize));
+    console.warn(colors.yellow, '[WARN]', colors.reset, ...args.map(sanitizeItem));
   },
 
   /**
    * Error logs - always shown, always sanitized
    */
   error: (...args: any[]) => {
-    console.error(colors.red, '[ERROR]', colors.reset, ...args.map(sanitize));
+    console.error(colors.red, '[ERROR]', colors.reset, ...args.map(sanitizeItem));
   },
 
   /**
@@ -115,7 +130,7 @@ export const logger = {
       '[SECURITY]',
       colors.reset,
       event,
-      details ? sanitize(details) : ''
+      details ? sanitizeItem(details) : ''
     );
   },
 };

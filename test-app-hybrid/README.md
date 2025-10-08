@@ -8,7 +8,7 @@ This test app allows you to test the centralized authentication system in both l
 ```bash
 npm run dev
 ```
-- Uses local auth service at `http://localhost:8888`
+- Uses local auth service at `http://localhost:9100`
 - Cookie domain: `undefined` (localhost only)
 - **Requirement**: Make sure local auth service is running:
   ```bash

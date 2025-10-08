@@ -1,10 +1,11 @@
 import type { HandlerEvent, HandlerContext, Handler } from "@netlify/functions";
-import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import axios from "axios";
-import { User } from "../src/types/teamwork.ts";
-import { Token } from "../src/types/auth.ts";
+import { User } from "../teamwork-auth/src/types/index";
+import { createTokenPair } from "./utils/tokenManager";
 import { getCorsHeaders, handlePreflight, validateOrigin } from "./middleware/cors";
+import { validateDomain, getDomainValidationErrorResponse } from "./middleware/validateDomain";
+import { checkRateLimit, getRateLimitErrorResponse, getRateLimitHeaders } from "./middleware/rateLimit";
 import { logger } from "./utils/logger";
 
 const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
@@ -15,11 +16,19 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       return preflightResponse;
     }
 
+    const corsHeaders = getCorsHeaders(event);
+
+    // Check rate limit
+    const rateLimit = checkRateLimit(event);
+    if (!rateLimit.allowed) {
+      return getRateLimitErrorResponse(rateLimit, corsHeaders);
+    }
+
     // Validate origin for security
     if (!validateOrigin(event)) {
       return {
         statusCode: 403,
-        headers: getCorsHeaders(event),
+        headers: corsHeaders,
         body: JSON.stringify({
           error: "Origin not allowed",
           details: { origin: event.headers.origin }
@@ -27,36 +36,25 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       };
     }
 
-    // Set the cookie to expire in 2 weeks
-    const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+    // Validate domain key
+    const domainValidation = validateDomain(event);
+    if (!domainValidation.valid) {
+      return getDomainValidationErrorResponse(domainValidation, corsHeaders);
+    }
 
-    // Get the JWT secret from the environment variable
-    const JWT_SECRET = process.env.JWT_KEY;
     const host = event.headers.host || "";
 
     // Ensure we're running on auth.mavenmm.com or localhost for development
     if (!host.includes("auth.mavenmm.com") && !host.includes("localhost")) {
       return {
         statusCode: 403,
-        headers: getCorsHeaders(event),
+        headers: corsHeaders,
         body: JSON.stringify({
           error: "Unauthorized host",
           details: {
             message: "Authentication must be performed via auth.mavenmm.com",
             received: host,
           },
-        }),
-      };
-    }
-
-    // If the JWT secret is not set, return an error
-    if (!JWT_SECRET) {
-      logger.error("JWT_KEY environment variable is not set");
-      return {
-        statusCode: 500,
-        headers: getCorsHeaders(event),
-        body: JSON.stringify({
-          error: "Server configuration error",
         }),
       };
     }
@@ -96,17 +94,11 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       throw new Error("Invalid response from Teamwork API");
     }
 
-    const token: Token = {
-      _id: data.user.id,
-      access_token: data.access_token,
-    };
-
-    // JWT token with standard 2-week expiry
-    const jwtToken = jwt.sign(token, JWT_SECRET, {
-      expiresIn: "2w",
-    });
-
     const user: User = data.user;
+    const teamworkAccessToken = data.access_token;
+
+    // Create access token (15min) and refresh token (7 days)
+    const tokenPair = createTokenPair(user.id, teamworkAccessToken);
 
     // Determine if we're in development (localhost) by checking origin/redirect
     const origin = event.headers.origin || event.headers.referer || "";
@@ -120,47 +112,52 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       mavenRedirectUrl
     });
 
-    // Base cookie settings
-    const baseSettings = {
+    // Cookie options for refresh token (refresh token stored as httpOnly cookie)
+    const cookieOptions: cookie.SerializeOptions = {
       httpOnly: true,
       path: "/",
-      maxAge: twoWeeks,
+      maxAge: 7 * 24 * 60 * 60, // 7 days
       secure: !isLocalhost, // HTTPS only in production
       sameSite: isLocalhost ? "lax" : "strict", // More secure in production
     };
 
-    // For localhost requests to production auth, don't set domain
-    // This allows the cookie to be set on auth.mavenmm.com and readable by the auth service
-    const cookieOptions: cookie.SerializeOptions = {
-      ...(baseSettings as cookie.SerializeOptions),
-    };
-
-    // Only set domain for production mavenmm.com origins
-    if (!isLocalhost) {
-      cookieOptions.domain = ".mavenmm.com";
+    // Only set domain for production mavenmm.com origins (cross-subdomain cookies)
+    if (!isLocalhost && domainValidation.domain?.environment === 'production') {
+      const domain = domainValidation.domain.domain;
+      if (domain.includes('mavenmm.com')) {
+        cookieOptions.domain = ".mavenmm.com";
+      }
     }
 
-    const mavenCookie = cookie.serialize("maven_auth_token", jwtToken, cookieOptions);
+    const refreshCookie = cookie.serialize("maven_refresh_token", tokenPair.refreshToken, cookieOptions);
 
-    // Security headers
-    const securityHeaders = {
-      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-      "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "DENY",
-      "X-XSS-Protection": "1; mode=block",
-      "Referrer-Policy": "strict-origin-when-cross-origin",
-    };
+    // Import security headers
+    const { getSecurityHeaders } = await import("./utils/securityHeaders");
+    const securityHeaders = getSecurityHeaders(true);
+
+    logger.info("Login successful", {
+      userId: user.id,
+      domain: domainValidation.domain?.domain,
+      environment: domainValidation.domain?.environment,
+    });
 
     return {
       statusCode: 200,
       headers: {
-        ...getCorsHeaders(event),
+        ...corsHeaders,
         ...securityHeaders,
-        "Set-Cookie": mavenCookie,
+        ...getRateLimitHeaders(rateLimit),
+        "Content-Type": "application/json",
+        "Set-Cookie": refreshCookie,
       },
       body: JSON.stringify({
-        twUser: user,
-        twStatus: data.status,
+        // Return access token in response body (NOT httpOnly cookie)
+        accessToken: tokenPair.accessToken,
+        expiresIn: tokenPair.expiresIn,
+        tokenType: "Bearer",
+        // User data for client
+        user: user,
+        // Redirect URL if provided
         redirectTo: mavenRedirectUrl,
       }),
     };
@@ -168,9 +165,13 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
     logger.error("Error in login handler:", error);
     return {
       statusCode: 500,
-      headers: getCorsHeaders(event),
+      headers: {
+        ...getCorsHeaders(event),
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         error: "Authentication failed",
+        message: "An internal error occurred during login",
       }),
     };
   }
