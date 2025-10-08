@@ -47,9 +47,11 @@ The package automatically detects the environment:
 ```bash
 # In your app's .env file:
 VITE_CLIENT_ID=<teamwork_oauth_client_id>
-VITE_REDIRECT_URI=http://localhost:3000
-VITE_DOMAIN_KEY=dev_localhost_3000  # Must match auth service's DEV_KEY
+VITE_REDIRECT_URI=http://localhost:3000  # Or your port (5173, 8080, etc.)
+VITE_DOMAIN_KEY=dev_localhost_shared  # Shared key for ALL localhost ports
 ```
+
+**Important:** All localhost ports (3000, 5173, 5174, 8080) use the same `dev_localhost_shared` key.
 
 ### For Production
 ```bash
@@ -176,8 +178,8 @@ npm install @mavenmm/teamwork-auth
 Create `.env` file:
 ```bash
 VITE_CLIENT_ID=<your_teamwork_client_id>
-VITE_REDIRECT_URI=http://localhost:3000
-VITE_DOMAIN_KEY=dev_localhost_3000
+VITE_REDIRECT_URI=http://localhost:3000  # Or your dev port
+VITE_DOMAIN_KEY=dev_localhost_shared
 ```
 
 3. **Start local auth service:**
@@ -203,7 +205,8 @@ import { useTeamworkAuth, Login } from '@mavenmm/teamwork-auth';
 
 **Issue: "Invalid domain key"**
 - Verify `VITE_DOMAIN_KEY` in your app matches `DEV_KEY` in auth service
-- Both should be: `dev_localhost_3000` for localhost development
+- For localhost: Both should be `dev_localhost_shared` (all ports use same key)
+- For production: Use unique key provided by auth.mavenmm.com admin
 
 **Issue: "CORS errors"**
 - Ensure your app's origin is registered in auth service's domain registry
@@ -225,6 +228,20 @@ import { useTeamworkAuth, Login } from '@mavenmm/teamwork-auth';
 - Hook automatically fetches user data from server (v2.0.4+)
 - Check browser console for "Failed to fetch user data" errors
 - Verify auth service /user endpoint is deployed and working
+
+**Issue: "Cookies not being set/validated" (Migration)**
+- Ensure `VITE_DOMAIN_KEY` matches the expected key in auth service domain registry
+- For localhost: Use `dev_localhost_shared` (not port-specific keys)
+- Clear browser cookies and localStorage, then login again
+- Check auth service logs for "Invalid domain key" or "Domain validation failed"
+- Verify your app's origin is registered in `functions/config/domains.ts`
+
+**Issue: "User info not loading after login" (Migration)**
+- The hook automatically fetches user data if localStorage is empty (v2.0.4+)
+- If migrating from old auth system, clear localStorage completely
+- Ensure auth service `/user` endpoint is deployed (check Network tab)
+- Verify refresh token cookie exists (Application → Cookies → `maven_refresh_token`)
+- Check console for "Failed to fetch user data" - may indicate token/permission issue
 
 ## User Data Management
 
@@ -516,23 +533,124 @@ function App() {
 export default App;
 ```
 
-## Migration from v1.x
+## Migrating Existing Apps to v2.0
 
-If migrating from v1.x:
+### Quick Migration Checklist
+
+If you're migrating an existing Maven app to use this centralized auth:
+
+**1. Install Package**
+```bash
+npm install @mavenmm/teamwork-auth
+```
+
+**2. Add Environment Variables**
+```bash
+# For localhost development:
+VITE_CLIENT_ID=<your_teamwork_client_id>
+VITE_REDIRECT_URI=http://localhost:3000  # Match your dev port
+VITE_DOMAIN_KEY=dev_localhost_shared
+
+# For production (get from DevOps):
+VITE_DOMAIN_KEY=<unique_production_key>
+```
+
+**3. Register Your Domain** (Production Only)
+Contact DevOps to add your domain to `functions/config/domains.ts`:
+- Production: `https://your-app.mavenmm.com`
+- Staging: `https://your-app.netlify.app`
+
+**4. Update Your App Code**
+```tsx
+import { useTeamworkAuth, Login } from '@mavenmm/teamwork-auth';
+
+function App() {
+  const { user, isAuthenticated, loading, logout } = useTeamworkAuth();
+
+  if (loading) return <div>Loading...</div>;
+
+  if (!isAuthenticated) {
+    return <Login
+      clientID={import.meta.env.VITE_CLIENT_ID}
+      redirectURI={window.location.origin}
+    />;
+  }
+
+  return <div>Welcome {user?.firstName}! <button onClick={logout}>Logout</button></div>;
+}
+```
+
+**5. Start Local Auth Service** (Development Only)
+```bash
+# Clone auth service repo
+git clone <auth-service-repo>
+cd <auth-service-repo>
+
+# Set up .env with DEV_KEY=dev_localhost_shared
+netlify dev --port 9100
+```
+
+**6. Test Authentication Flow**
+- Clear browser cookies and localStorage
+- Start your app (should auto-detect `localhost:9100`)
+- Click login, authenticate with Teamwork
+- Verify user data loads correctly
+- Test logout and re-login
+
+**7. Common Migration Issues**
+
+| Problem | Solution |
+|---------|----------|
+| "Invalid domain key" | Use `dev_localhost_shared` for localhost, not port-specific keys |
+| Cookies not persisting | Clear all cookies/localStorage and login fresh |
+| User data is null | Hook auto-fetches from `/user` endpoint (v2.0.4+) - verify it's deployed |
+| "Auth service unreachable" | Start local auth service on port 9100 |
+| CORS errors | Verify your origin is in `functions/config/domains.ts` |
+| 401 on Teamwork OAuth | Ensure `VITE_REDIRECT_URI` is registered in Teamwork OAuth app settings |
+
+**8. Verify Production Deployment**
+Before deploying to production:
+- ✅ Domain registered in auth service
+- ✅ `VITE_DOMAIN_KEY` env var set (production value)
+- ✅ `VITE_CLIENT_ID` env var set
+- ✅ `VITE_REDIRECT_URI` set to production URL
+- ✅ Auth service `/user` endpoint deployed
+- ✅ Test login/logout flow in staging first
+
+### Migration from v1.x
+
+If migrating from v1.x to v2.x:
 
 1. **Update package:**
    ```bash
    npm install @mavenmm/teamwork-auth@latest
    ```
 
-2. **Update environment variables:**
+2. **Add required environment variables:**
    - Add `VITE_DOMAIN_KEY` (required in v2.0)
+   - For localhost: `dev_localhost_shared`
+   - For production: Get from DevOps
 
 3. **Remove manual authServiceUrl config:**
-   - v2.0 auto-detects environment
+   - v2.0 auto-detects environment (localhost/production/staging)
+   - No need to manually specify auth service URL
 
-4. **Update auth service:**
+4. **Clear old auth data:**
+   ```tsx
+   // In your migration code or manually in browser console:
+   localStorage.clear();
+   // Also clear cookies in browser DevTools
+   ```
+
+5. **Update auth service:**
    - Must use v2.0 auth service with domain authentication
+   - Contact DevOps to register your domain
+
+6. **Test thoroughly:**
+   - Test localhost development flow
+   - Test staging deployment
+   - Test production deployment
+   - Verify user data persistence across page refreshes
 
 See MIGRATION_V2.md in the auth service repo for detailed migration guide.
 
