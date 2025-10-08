@@ -84,6 +84,7 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
   const accessTokenRef = useRef<string | null>(null);
   const tokenExpiryRef = useRef<number>(0);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshInProgressRef = useRef<Promise<void> | null>(null);
 
   /**
    * Store access token and schedule refresh
@@ -124,40 +125,65 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
    * Refresh access token using refresh token (httpOnly cookie)
    */
   const refreshToken = useCallback(async () => {
-    try {
-      console.log('Refreshing access token...');
-
-      const response = await fetch(`${authServiceUrl}/.netlify/functions/refresh`, {
-        method: "POST",
-        headers: getAuthHeaders(domainKey),
-        credentials: "include", // Send httpOnly cookie
-      });
-
-      if (!response.ok) {
-        throw new Error(`Token refresh failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // Store new access token
-      storeAccessToken(data.accessToken, data.expiresIn);
-
-      console.log('Access token refreshed successfully');
-    } catch (err) {
-      console.error('Token refresh failed:', err);
-      // Clear auth state on refresh failure
-      clearAccessToken();
-      setIsAuthenticated(false);
-      setUser(null);
-      localStorage.removeItem("maven_sso_user");
+    // If a refresh is already in progress, wait for it
+    if (refreshInProgressRef.current) {
+      console.log('Refresh already in progress, waiting...');
+      return refreshInProgressRef.current;
     }
+
+    // Start new refresh
+    const refreshPromise = (async () => {
+      try {
+        console.log('Refreshing access token...');
+
+        const response = await fetch(`${authServiceUrl}/.netlify/functions/refresh`, {
+          method: "POST",
+          headers: getAuthHeaders(domainKey),
+          credentials: "include", // Send httpOnly cookie
+        });
+
+        if (!response.ok) {
+          throw new Error(`Token refresh failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Store new access token
+        storeAccessToken(data.accessToken, data.expiresIn);
+
+        console.log('Access token refreshed successfully');
+      } catch (err) {
+        console.error('Token refresh failed:', err);
+        // Clear auth state on refresh failure
+        clearAccessToken();
+        setIsAuthenticated(false);
+        setUser(null);
+        localStorage.removeItem("maven_sso_user");
+      } finally {
+        // Clear the in-progress flag
+        refreshInProgressRef.current = null;
+      }
+    })();
+
+    refreshInProgressRef.current = refreshPromise;
+    return refreshPromise;
   }, [authServiceUrl, domainKey, storeAccessToken, clearAccessToken]);
 
   /**
    * Login with OAuth code
    */
   const login = async (code: string) => {
+    // Prevent code reuse (OAuth codes are single-use)
+    const previousCode = localStorage.getItem("maven_sso_code");
+    if (previousCode === JSON.stringify(code)) {
+      console.log('OAuth code already used, skipping duplicate login attempt');
+      return { user: null };
+    }
+
     try {
+      // Record the code BEFORE making the request to prevent race conditions
+      localStorage.setItem("maven_sso_code", JSON.stringify(code));
+
       const options = {
         method: "POST",
         headers: {
@@ -166,9 +192,6 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
         },
         credentials: "include" as RequestCredentials,
       };
-
-      // Record the code to prevent reuse
-      localStorage.setItem("maven_sso_code", JSON.stringify(code));
 
       const res = await fetch(`${authServiceUrl}/.netlify/functions/login`, options);
 
@@ -197,6 +220,8 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
 
       return { user: data.user };
     } catch (err) {
+      // Clear the code on error so it can be retried
+      localStorage.removeItem("maven_sso_code");
       throw new Error("Failed to log in");
     }
   };
@@ -224,14 +249,20 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
             setIsAuthenticated(true);
             cleanUpUrl();
 
-            // Restore user data from localStorage
-            const prevUser = localStorage.getItem("maven_sso_user");
-            if (prevUser) {
-              try {
-                const userData = JSON.parse(prevUser);
-                setUser(userData);
-              } catch (error) {
-                console.error('Failed to parse user data:', error);
+            // Use user data from checkAuth response (fresh from Teamwork API)
+            if (data.user) {
+              setUser(data.user);
+              localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
+            } else {
+              // Fallback: restore user data from localStorage
+              const prevUser = localStorage.getItem("maven_sso_user");
+              if (prevUser) {
+                try {
+                  const userData = JSON.parse(prevUser);
+                  setUser(userData);
+                } catch (error) {
+                  console.error('Failed to parse user data:', error);
+                }
               }
             }
             return;
@@ -260,13 +291,20 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
             setIsAuthenticated(true);
             cleanUpUrl();
 
-            const prevUser = localStorage.getItem("maven_sso_user");
-            if (prevUser) {
-              try {
-                const userData = JSON.parse(prevUser);
-                setUser(userData);
-              } catch (error) {
-                console.error('Failed to parse user data:', error);
+            // Use user data from checkAuth response (fresh from Teamwork API)
+            if (data.user) {
+              setUser(data.user);
+              localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
+            } else {
+              // Fallback: restore user data from localStorage
+              const prevUser = localStorage.getItem("maven_sso_user");
+              if (prevUser) {
+                try {
+                  const userData = JSON.parse(prevUser);
+                  setUser(userData);
+                } catch (error) {
+                  console.error('Failed to parse user data:', error);
+                }
               }
             }
             return;

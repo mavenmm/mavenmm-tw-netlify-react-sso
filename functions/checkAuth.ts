@@ -100,7 +100,10 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       };
     }
 
-    // Valid token
+    // Valid token - user data must be provided by client from localStorage
+    // (User data is saved during login and stored on the client side)
+    // We don't fetch user data here to avoid extra API calls on every checkAuth
+
     logger.debug("CheckAuth: User authenticated successfully", {
       userId: payload.userId,
       domain: domainValidation.domain?.domain,

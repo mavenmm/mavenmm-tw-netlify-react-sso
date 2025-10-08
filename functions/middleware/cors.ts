@@ -34,7 +34,7 @@ export function getCorsHeaders(event: HandlerEvent): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie, code",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie, code, X-Domain-Key",
     "Access-Control-Allow-Credentials": "true",
     "Cache-Control": "no-store, no-cache, must-revalidate",
     "Vary": "Origin", // Important for caching with multiple origins

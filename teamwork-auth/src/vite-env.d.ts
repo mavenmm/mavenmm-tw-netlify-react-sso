@@ -1,12 +1,11 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_TEAMWORK_CLIENT_ID: string;
-  readonly VITE_TEAMWORK_REDIRECT_URI: string;
-  readonly VITE_TEAMWORK_CLIENT_SECRET?: string;
-  readonly DEV: boolean;
-  readonly PROD: boolean;
-  readonly MODE: string;
+  readonly VITE_DOMAIN_KEY?: string;
+  readonly DOMAIN_KEY?: string;
+  readonly VITE_CLIENT_ID?: string;
+  readonly VITE_CLIENT_SECRET?: string;
+  readonly VITE_REDIRECT_URI?: string;
 }
 
 interface ImportMeta {

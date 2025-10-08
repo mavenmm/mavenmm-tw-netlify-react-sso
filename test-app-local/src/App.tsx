@@ -3,13 +3,12 @@ import { useLocation } from 'react-router-dom';
 import { useTeamworkAuth, Login, type TeamworkAuthConfig } from '@mavenmm/teamwork-auth';
 
 function App() {
-  // Mock mode for local development (no auth service needed)
+  // Real Teamwork authentication with local auth service
   const authConfig: TeamworkAuthConfig = useMemo(() => ({
-    authServiceUrl: 'http://localhost:9100', // Not used in mock mode
-    mockMode: true, // Enable mock authentication for local development
+    domainKey: import.meta.env.VITE_DOMAIN_KEY || 'dev_localhost_3000',
   }), []);
 
-  const { user, loading, isAuthenticated, logout, login } = useTeamworkAuth(authConfig);
+  const { user, loading, isAuthenticated, logout, login, error, authServiceUrl } = useTeamworkAuth(authConfig);
   const location = useLocation();
 
   // DEBUG: Log state for troubleshooting
@@ -19,6 +18,8 @@ function App() {
     hasUser: !!user,
     userId: user?.id,
     userName: user ? `${user.firstName} ${user.lastName}` : 'No user',
+    authServiceUrl,
+    error,
     url: window.location.href,
     search: location.search,
   });
@@ -49,39 +50,49 @@ function App() {
     );
   }
 
+  if (error) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h1>⚠️ Auth Service Error</h1>
+        <div style={{
+          background: '#ffebee',
+          border: '2px solid #f44336',
+          borderRadius: '8px',
+          padding: '15px',
+          margin: '20px 0',
+          whiteSpace: 'pre-wrap',
+          textAlign: 'left'
+        }}>
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h1>🚀 Teamwork Auth - Mock Mode Test</h1>
+        <h1>🚀 Teamwork Auth - Local Test</h1>
         <div style={{
-          background: '#fff3cd',
-          border: '2px solid #ffc107',
+          background: '#e3f2fd',
+          border: '2px solid #2196f3',
           borderRadius: '8px',
           padding: '15px',
           margin: '20px 0'
         }}>
-          <h3>🧪 MOCK MODE</h3>
-          <p><strong>Package:</strong> @mavenmm/teamwork-auth (local)</p>
-          <p><strong>Mode:</strong> Mock authentication (no auth service needed)</p>
+          <h3>🏠 LOCAL MODE</h3>
+          <p><strong>Package:</strong> @mavenmm/teamwork-auth v2.0 (local build)</p>
+          <p><strong>Auth Service:</strong> {authServiceUrl}</p>
           <p><strong>Port:</strong> 3000</p>
+          <p><strong>Domain Key:</strong> dev_localhost_3000</p>
         </div>
 
-        <p>Click below to simulate login:</p>
+        <p>Click below to login with your Teamwork account:</p>
 
-        <button
-          onClick={() => login('mock-code')}
-          style={{
-            background: '#4caf50',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            fontSize: '16px'
-          }}
-        >
-          🔐 Mock Login
-        </button>
+        <Login
+          clientID={import.meta.env.VITE_CLIENT_ID}
+          redirectURI={import.meta.env.VITE_REDIRECT_URI}
+        />
       </div>
     );
   }
@@ -89,13 +100,13 @@ function App() {
   return (
     <div style={{ padding: '20px' }}>
       <div style={{
-        background: '#fff3cd',
-        border: '2px solid #ffc107',
+        background: '#e8f5e9',
+        border: '2px solid #4caf50',
         borderRadius: '8px',
         padding: '20px',
         marginBottom: '20px'
       }}>
-        <h1>✅ Mock Login Successful!</h1>
+        <h1>✅ Authenticated!</h1>
         <div style={{ marginBottom: '15px' }}>
           <strong>Welcome, {user?.firstName} {user?.lastName}!</strong>
         </div>
@@ -139,14 +150,16 @@ function App() {
       <div style={{
         marginTop: '30px',
         padding: '15px',
-        background: '#e8f5e8',
+        background: '#e3f2fd',
         borderRadius: '5px',
         fontSize: '14px'
       }}>
-        <h3>🧪 Testing Info:</h3>
-        <p><strong>Mode:</strong> Mock (Local Development)</p>
-        <p><strong>Package:</strong> @mavenmm/teamwork-auth (local)</p>
-        <p><strong>Hook:</strong> useTeamworkAuth() with mockMode: true</p>
+        <h3>🧪 V2.0 Architecture Active:</h3>
+        <p><strong>Mode:</strong> Real Teamwork Auth (Local)</p>
+        <p><strong>Package:</strong> @mavenmm/teamwork-auth v2.0</p>
+        <p><strong>Auth Service:</strong> {authServiceUrl}</p>
+        <p><strong>Access Token:</strong> 15-minute (auto-refresh)</p>
+        <p><strong>Refresh Token:</strong> 7-day httpOnly cookie</p>
       </div>
     </div>
   );
