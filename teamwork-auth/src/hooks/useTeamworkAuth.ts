@@ -227,6 +227,40 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
   };
 
   /**
+   * Fetch user data from auth service
+   */
+  const fetchUserData = useCallback(async (): Promise<User | null> => {
+    if (!accessTokenRef.current) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(`${authServiceUrl}/.netlify/functions/user`, {
+        method: "GET",
+        headers: {
+          ...getAuthHeaders(domainKey),
+          "Authorization": `Bearer ${accessTokenRef.current}`,
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          // Store fresh user data
+          setUser(data.user);
+          localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
+          return data.user;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+    }
+
+    return null;
+  }, [authServiceUrl, domainKey]);
+
+  /**
    * Check authentication status
    */
   const checkAuth = useCallback(async () => {
@@ -249,22 +283,22 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
             setIsAuthenticated(true);
             cleanUpUrl();
 
-            // Use user data from checkAuth response (fresh from Teamwork API)
-            if (data.user) {
-              setUser(data.user);
-              localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
-            } else {
-              // Fallback: restore user data from localStorage
-              const prevUser = localStorage.getItem("maven_sso_user");
-              if (prevUser) {
-                try {
-                  const userData = JSON.parse(prevUser);
-                  setUser(userData);
-                } catch (error) {
-                  console.error('Failed to parse user data:', error);
-                }
+            // Try to restore user data from localStorage first
+            const prevUser = localStorage.getItem("maven_sso_user");
+            if (prevUser) {
+              try {
+                const userData = JSON.parse(prevUser);
+                setUser(userData);
+              } catch (error) {
+                console.error('Failed to parse user data:', error);
               }
             }
+
+            // If no user data in localStorage, fetch from server
+            if (!prevUser) {
+              await fetchUserData();
+            }
+
             return;
           }
         }
@@ -291,22 +325,22 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
             setIsAuthenticated(true);
             cleanUpUrl();
 
-            // Use user data from checkAuth response (fresh from Teamwork API)
-            if (data.user) {
-              setUser(data.user);
-              localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
-            } else {
-              // Fallback: restore user data from localStorage
-              const prevUser = localStorage.getItem("maven_sso_user");
-              if (prevUser) {
-                try {
-                  const userData = JSON.parse(prevUser);
-                  setUser(userData);
-                } catch (error) {
-                  console.error('Failed to parse user data:', error);
-                }
+            // Try to restore user data from localStorage first
+            const prevUser = localStorage.getItem("maven_sso_user");
+            if (prevUser) {
+              try {
+                const userData = JSON.parse(prevUser);
+                setUser(userData);
+              } catch (error) {
+                console.error('Failed to parse user data:', error);
               }
             }
+
+            // If no user data in localStorage, fetch from server
+            if (!prevUser) {
+              await fetchUserData();
+            }
+
             return;
           }
         }
