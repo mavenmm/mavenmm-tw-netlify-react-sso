@@ -220,6 +220,50 @@ import { useTeamworkAuth, Login } from '@mavenmm/teamwork-auth';
 - Production: Both must be on HTTPS
 - Cannot test auth.mavenmm.com from localhost (browser security)
 
+**Issue: "User data is null even when authenticated"**
+- Normal on first load after localStorage is cleared
+- Hook automatically fetches user data from server (v2.0.4+)
+- Check browser console for "Failed to fetch user data" errors
+- Verify auth service /user endpoint is deployed and working
+
+## User Data Management
+
+### Automatic User Data Fetching (v2.0.4+)
+
+The hook automatically manages user data:
+
+1. **On login**: User data is returned from auth service and stored in localStorage
+2. **On page load**: User data is loaded from localStorage (fast)
+3. **If localStorage is empty**: Automatically fetches fresh user data from auth service
+
+**This means:**
+- ✅ User data survives localStorage being cleared
+- ✅ User data is always available when authenticated
+- ✅ Fresh user data fetched from Teamwork when needed
+- ✅ No manual user data fetching required
+
+**Example:**
+```tsx
+const { user, isAuthenticated } = useTeamworkAuth();
+
+// User data is automatically available when authenticated
+if (isAuthenticated) {
+  console.log(user?.firstName); // Always available
+}
+```
+
+### Manual User Data Refresh
+
+If you need to refresh user data manually (e.g., after profile update):
+
+```tsx
+// Clear localStorage and refresh page to trigger re-fetch
+localStorage.removeItem('maven_sso_user');
+window.location.reload();
+```
+
+Or wait for the next page load - the hook will automatically fetch fresh data.
+
 ## Architecture Notes
 
 ### Token Strategy (v2.0)
@@ -228,13 +272,21 @@ import { useTeamworkAuth, Login } from '@mavenmm/teamwork-auth';
 - **Auto-refresh**: Tokens refresh 1 minute before expiry
 - **Token rotation**: Refresh tokens are single-use and blacklisted after use
 
+### User Data Strategy (v2.0.4+)
+- **On login**: Fetched from Teamwork and stored in localStorage
+- **On page load**: Loaded from localStorage first (fast)
+- **Fallback**: If localStorage empty, fetched from auth service
+- **Auth service**: Fetches fresh data from Teamwork API using refresh token
+- **Always current**: User data stays in sync with Teamwork
+
 ### Security Features
 - HttpOnly cookies prevent XSS attacks
 - Domain authentication keys prevent domain spoofing
-- Rate limiting on all endpoints
+- Rate limiting on all endpoints (including /user)
 - Automatic token rotation and blacklisting
 - Content Security Policy headers
 - Timing-safe key comparison to prevent timing attacks
+- User data fetched server-side (Teamwork API token never exposed)
 
 ### Cookie Behavior
 - **localhost**: Cookies work (same domain)
@@ -486,6 +538,26 @@ See MIGRATION_V2.md in the auth service repo for detailed migration guide.
 
 ---
 
-**Last Updated:** v2.0.3
+**Last Updated:** v2.0.4
 **Package:** @mavenmm/teamwork-auth
 **Auth Service:** auth.mavenmm.com (v2.0)
+
+## Changelog
+
+### v2.0.4 (Latest)
+- ✅ Added `/user` endpoint to fetch user data from auth service
+- ✅ Automatic user data fetching when localStorage is empty
+- ✅ User data survives localStorage being cleared
+- ✅ Fresh user data from Teamwork API on demand
+
+### v2.0.3
+- Added CLAUDE.md for AI assistant discoverability
+- Bug fixes for duplicate login prevention
+- Improved user data handling
+
+### v2.0.0-2.0.2
+- Dual-token architecture (access + refresh tokens)
+- Domain authentication keys
+- Token rotation and blacklisting
+- Auto-refresh before expiry
+- Zero-config environment detection
