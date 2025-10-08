@@ -79,6 +79,14 @@ export function getDomainRegistry(): DomainConfig[] {
       description: 'Maven Home - Netlify staging/preview',
       registeredAt: new Date().toISOString(),
     },
+    {
+      domain: 'https://teamfeedback.netlify.app',
+      domainKey: process.env.DOMAIN_KEY_TEAMFEEDBACK_STAGING || 'dmk_staging_teamfeedback',
+      environment: 'staging',
+      active: true,
+      description: 'Team Feedback - Netlify staging',
+      registeredAt: new Date().toISOString(),
+    },
 
     // Development domains (localhost)
     {
