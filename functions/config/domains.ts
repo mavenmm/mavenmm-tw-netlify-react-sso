@@ -33,94 +33,39 @@ export function getDomainRegistry(): DomainConfig[] {
     }
   }
 
-  // Default registry for development/staging
-  // In production, this should come from environment variables or database
+  // Helper to create domain config
+  const createDomain = (
+    domain: string,
+    envKey: string,
+    fallback: string,
+    environment: 'production' | 'staging' | 'development',
+    description: string
+  ): DomainConfig => ({
+    domain,
+    domainKey: process.env[envKey] || fallback,
+    environment,
+    active: true,
+    description,
+    registeredAt: new Date().toISOString(),
+  });
+
+  // Default registry organized by environment
   const defaultRegistry: DomainConfig[] = [
-    // Production domains (*.mavenmm.com)
-    {
-      domain: 'https://app1.mavenmm.com',
-      domainKey: process.env.DOMAIN_KEY_APP1 || 'dmk_dev_app1_replace_in_prod',
-      environment: 'production',
-      active: true,
-      description: 'Main application',
-      registeredAt: new Date().toISOString(),
-    },
-    {
-      domain: 'https://admin.mavenmm.com',
-      domainKey: process.env.DOMAIN_KEY_ADMIN || 'dmk_dev_admin_replace_in_prod',
-      environment: 'production',
-      active: true,
-      description: 'Admin dashboard',
-      registeredAt: new Date().toISOString(),
-    },
-    {
-      domain: 'https://dashboard.mavenmm.com',
-      domainKey: process.env.DOMAIN_KEY_DASHBOARD || 'dmk_dev_dashboard_replace_in_prod',
-      environment: 'production',
-      active: true,
-      description: 'Analytics dashboard',
-      registeredAt: new Date().toISOString(),
-    },
-    {
-      domain: 'https://home.mavenmm.com',
-      domainKey: process.env.DOMAIN_KEY_HOME || 'dmk_dev_home_replace_in_prod',
-      environment: 'production',
-      active: true,
-      description: 'Home/Landing page',
-      registeredAt: new Date().toISOString(),
-    },
+    // ===== Production (*.mavenmm.com) =====
+    createDomain('https://app1.mavenmm.com', 'DOMAIN_KEY_APP1', 'dmk_dev_app1_replace_in_prod', 'production', 'Main application'),
+    createDomain('https://admin.mavenmm.com', 'DOMAIN_KEY_ADMIN', 'dmk_dev_admin_replace_in_prod', 'production', 'Admin dashboard'),
+    createDomain('https://dashboard.mavenmm.com', 'DOMAIN_KEY_DASHBOARD', 'dmk_dev_dashboard_replace_in_prod', 'production', 'Analytics dashboard'),
+    createDomain('https://home.mavenmm.com', 'DOMAIN_KEY_HOME', 'dmk_dev_home_replace_in_prod', 'production', 'Home/Landing page'),
 
-    // Staging domains (*.netlify.app)
-    {
-      domain: 'https://maven-home.netlify.app',
-      domainKey: process.env.DOMAIN_KEY_MAVEN_HOME_STAGING || 'dmk_staging_maven_home',
-      environment: 'staging',
-      active: true,
-      description: 'Maven Home - Netlify staging/preview',
-      registeredAt: new Date().toISOString(),
-    },
-    {
-      domain: 'https://teamfeedback.netlify.app',
-      domainKey: process.env.DOMAIN_KEY_TEAMFEEDBACK_STAGING || 'dmk_staging_teamfeedback',
-      environment: 'staging',
-      active: true,
-      description: 'Team Feedback - Netlify staging',
-      registeredAt: new Date().toISOString(),
-    },
+    // ===== Staging (*.netlify.app) =====
+    createDomain('https://maven-home.netlify.app', 'DOMAIN_KEY_MAVEN_HOME', 'dmk_staging_maven_home', 'staging', 'Maven Home - Netlify staging'),
+    createDomain('https://teamfeedback.netlify.app', 'DOMAIN_KEY_TEAMFEEDBACK', 'dmk_staging_teamfeedback', 'staging', 'Team Feedback - Netlify staging'),
 
-    // Development domains (localhost)
-    {
-      domain: 'http://localhost:3000',
-      domainKey: process.env.DEV_KEY || 'dev_localhost_3000',
-      environment: 'development',
-      active: true,
-      description: 'Local development - port 3000',
-      registeredAt: new Date().toISOString(),
-    },
-    {
-      domain: 'http://localhost:5173',
-      domainKey: process.env.DEV_KEY || 'dev_localhost_5173',
-      environment: 'development',
-      active: true,
-      description: 'Local development - port 5173 (Vite)',
-      registeredAt: new Date().toISOString(),
-    },
-    {
-      domain: 'http://localhost:5174',
-      domainKey: process.env.DEV_KEY || 'dev_localhost_5174',
-      environment: 'development',
-      active: true,
-      description: 'Local development - port 5174',
-      registeredAt: new Date().toISOString(),
-    },
-    {
-      domain: 'http://localhost:8080',
-      domainKey: process.env.DEV_KEY || 'dev_localhost_8080',
-      environment: 'development',
-      active: true,
-      description: 'Local development - port 8080',
-      registeredAt: new Date().toISOString(),
-    },
+    // ===== Development (localhost) =====
+    createDomain('http://localhost:3000', 'DEV_KEY', 'dev_localhost_3000', 'development', 'Local development - port 3000'),
+    createDomain('http://localhost:5173', 'DEV_KEY', 'dev_localhost_5173', 'development', 'Local development - port 5173 (Vite)'),
+    createDomain('http://localhost:5174', 'DEV_KEY', 'dev_localhost_5174', 'development', 'Local development - port 5174'),
+    createDomain('http://localhost:8080', 'DEV_KEY', 'dev_localhost_8080', 'development', 'Local development - port 8080'),
   ];
 
   return defaultRegistry;
