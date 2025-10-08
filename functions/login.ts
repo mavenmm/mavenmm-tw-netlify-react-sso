@@ -62,8 +62,7 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
 
     // Use the origin from the request (where the user actually is)
     // This allows the same auth service to handle multiple domains
-    const requestOrigin = event.headers.origin || event.headers.referer?.split('?')[0];
-    const redirectUri = requestOrigin || process.env.VITE_REDIRECT_URI; // Fallback to env var
+    const redirectUri = event.headers.origin || event.headers.referer?.split('?')[0];
 
     const mavenRedirectUrl = event.queryStringParameters?.maven_redirect_url;
 
@@ -106,13 +105,13 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
     const tokenPair = createTokenPair(user.id, teamworkAccessToken);
 
     // Determine if we're in development (localhost) by checking origin/redirect
-    const origin = event.headers.origin || event.headers.referer || "";
+    const requestOrigin = event.headers.origin || event.headers.referer || "";
     const isLocalhost = redirectUri?.includes("localhost") ||
                        mavenRedirectUrl?.includes("localhost") ||
-                       origin.includes("localhost");
+                       requestOrigin.includes("localhost");
 
     logger.debug(`Setting authentication cookie for ${isLocalhost ? 'localhost' : 'production'}`, {
-      origin,
+      origin: requestOrigin,
       redirectUri,
       mavenRedirectUrl
     });

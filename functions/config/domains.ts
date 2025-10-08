@@ -62,10 +62,11 @@ export function getDomainRegistry(): DomainConfig[] {
     createDomain('https://teamfeedback.netlify.app', 'DOMAIN_KEY_TEAMFEEDBACK', 'dmk_staging_teamfeedback', 'staging', 'Team Feedback - Netlify staging'),
 
     // ===== Development (localhost) =====
-    createDomain('http://localhost:3000', 'DEV_KEY', 'dev_localhost_3000', 'development', 'Local development - port 3000'),
-    createDomain('http://localhost:5173', 'DEV_KEY', 'dev_localhost_5173', 'development', 'Local development - port 5173 (Vite)'),
-    createDomain('http://localhost:5174', 'DEV_KEY', 'dev_localhost_5174', 'development', 'Local development - port 5174'),
-    createDomain('http://localhost:8080', 'DEV_KEY', 'dev_localhost_8080', 'development', 'Local development - port 8080'),
+    // All localhost ports share the same key for simplicity
+    createDomain('http://localhost:3000', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 3000'),
+    createDomain('http://localhost:5173', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 5173 (Vite)'),
+    createDomain('http://localhost:5174', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 5174'),
+    createDomain('http://localhost:8080', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 8080'),
   ];
 
   return defaultRegistry;
