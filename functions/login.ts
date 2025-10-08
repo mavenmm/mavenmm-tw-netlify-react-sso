@@ -62,8 +62,8 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
 
     // Use the origin from the request (where the user actually is)
     // This allows the same auth service to handle multiple domains
-    const origin = event.headers.origin || event.headers.referer?.split('?')[0];
-    const redirectUri = origin || process.env.VITE_REDIRECT_URI; // Fallback to env var
+    const requestOrigin = event.headers.origin || event.headers.referer?.split('?')[0];
+    const redirectUri = requestOrigin || process.env.VITE_REDIRECT_URI; // Fallback to env var
 
     const mavenRedirectUrl = event.queryStringParameters?.maven_redirect_url;
 
