@@ -61,17 +61,24 @@ export function getDomainRegistry(): DomainConfig[] {
       description: 'Analytics dashboard',
       registeredAt: new Date().toISOString(),
     },
+    {
+      domain: 'https://home.mavenmm.com',
+      domainKey: process.env.DOMAIN_KEY_HOME || 'dmk_dev_home_replace_in_prod',
+      environment: 'production',
+      active: true,
+      description: 'Home/Landing page',
+      registeredAt: new Date().toISOString(),
+    },
 
     // Staging domains (*.netlify.app)
-    // Add your staging URLs here as they're created
-    // {
-    //   domain: 'https://staging-app-abc123.netlify.app',
-    //   domainKey: process.env.DOMAIN_KEY_STAGING_APP || 'dmk_staging_app',
-    //   environment: 'staging',
-    //   active: true,
-    //   description: 'Staging environment',
-    //   registeredAt: new Date().toISOString(),
-    // },
+    {
+      domain: 'https://maven-home.netlify.app',
+      domainKey: process.env.DOMAIN_KEY_MAVEN_HOME_STAGING || 'dmk_staging_maven_home',
+      environment: 'staging',
+      active: true,
+      description: 'Maven Home - Netlify staging/preview',
+      registeredAt: new Date().toISOString(),
+    },
 
     // Development domains (localhost)
     {
