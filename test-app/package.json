@@ -11,7 +11,7 @@
     "setup": "cd .. && npm run build && cd test-app && npm link ../dist"
   },
   "dependencies": {
-    "@mavenmm/teamwork-auth": "file:../",
+    "@mavenmm/teamwork-auth": "file:../teamwork-auth",
     "@teamwork/login-button": "^1.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

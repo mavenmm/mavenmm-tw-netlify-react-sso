@@ -1,10 +1,10 @@
 [build]
   command = ""
-  functions = 'auth-service/functions'
-  publish = "auth-service"
+  functions = "functions"
+  publish = "."
 
 [functions]
-  directory = "auth-service/functions"
+  directory = "functions"
   node_bundler = "esbuild"
 
 # API requests should be handled first
@@ -20,4 +20,4 @@
   autoLaunch = false
 
 # Note: CORS headers are handled dynamically in the functions themselves
-# See auth-service/functions/middleware/cors.ts for CORS configuration
+# See functions/middleware/cors.ts for CORS configuration
