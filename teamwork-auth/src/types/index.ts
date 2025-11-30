@@ -18,6 +18,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   loading: boolean;
   isAuthenticated: boolean;
+  getAccessToken: () => string | null;
 }
 
 // Login result interface

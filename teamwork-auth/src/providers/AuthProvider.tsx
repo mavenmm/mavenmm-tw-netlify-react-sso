@@ -24,7 +24,7 @@ export default function AuthProvider({
   children,
   authConfig,
 }: AuthProviderProps) {
-  const { user, setUser, logout, loading, isAuthenticated, login } =
+  const { user, setUser, logout, loading, isAuthenticated, login, getAccessToken } =
     useTeamworkAuth(authConfig);
 
   // Get the code from the URL for the teamwork login flow
@@ -32,7 +32,7 @@ export default function AuthProvider({
   const params = location.search;
   const code = new URLSearchParams(params).get("code");
 
-  const value = { user, logout, loading, isAuthenticated };
+  const value = { user, logout, loading, isAuthenticated, getAccessToken };
 
   // Use refs to prevent infinite loops
   const lastCodeRef = useRef<string | null>(null);

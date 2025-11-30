@@ -474,7 +474,7 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
     logout,
     error,
     authServiceUrl,
-    // Expose method to get current access token for API calls
+    // Expose method to get current Maven access token (for sending to your backend)
     getAccessToken: () => accessTokenRef.current,
   };
 }
