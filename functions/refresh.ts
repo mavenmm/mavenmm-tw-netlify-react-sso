@@ -126,8 +126,11 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       maxAge: 7 * 24 * 60 * 60, // 7 days
     };
 
-    // Set domain for production (*.mavenmm.com cross-subdomain)
-    if (!isLocalhost && domainValidation.domain?.environment === 'production') {
+    // Set cookie domain for cross-port/subdomain sharing
+    if (isLocalhost) {
+      // localhost needs explicit domain to share cookies across ports
+      cookieOptions.domain = "localhost";
+    } else if (domainValidation.domain?.environment === 'production') {
       const domain = domainValidation.domain.domain;
       if (domain.includes('mavenmm.com')) {
         cookieOptions.domain = '.mavenmm.com';
