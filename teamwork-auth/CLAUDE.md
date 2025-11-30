@@ -316,6 +316,8 @@ Or wait for the next page load - the hook will automatically fetch fresh data.
 ## Advanced Usage
 
 ### Getting Access Token for API Calls
+
+**Frontend: Get Maven Access Token**
 ```tsx
 const { getAccessToken } = useTeamworkAuth();
 
@@ -334,6 +336,60 @@ async function callAPI() {
   return response.json();
 }
 ```
+
+### Getting Teamwork API Token (Backend/Serverless)
+
+**For third-party integrations** (GraphQL servers, serverless functions, etc.) that need the actual **Teamwork API token**, use the `/token` endpoint:
+
+```typescript
+// In your serverless function or GraphQL resolver
+async function getTeamworkToken(mavenAccessToken: string) {
+  const response = await fetch('https://auth.mavenmm.com/.netlify/functions/token', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${mavenAccessToken}`,
+      'X-Domain-Key': process.env.DOMAIN_KEY,
+    },
+    credentials: 'include', // Important: sends cookies
+  });
+
+  const data = await response.json();
+  return data.accessToken; // Teamwork API token
+}
+
+// Example: GraphQL resolver
+const resolver = async (parent, args, context) => {
+  // Get Maven access token from request
+  const mavenToken = context.request.headers.authorization?.substring(7);
+
+  // Get Teamwork token from auth service
+  const teamworkToken = await getTeamworkToken(mavenToken);
+
+  // Use Teamwork token to call Teamwork API
+  const response = await fetch('https://your-site.teamwork.com/projects.json', {
+    headers: {
+      'Authorization': `Bearer ${teamworkToken}`,
+    }
+  });
+
+  return response.json();
+};
+```
+
+**Response format:**
+```json
+{
+  "accessToken": "tw_xxx_teamwork_access_token",
+  "userId": "381243"
+}
+```
+
+**Security notes:**
+- Teamwork token stays server-side (never exposed to frontend)
+- Requires valid Maven access token from `useTeamworkAuth()`
+- Requires valid domain key
+- Requires httpOnly cookies (refresh token)
+- Rate limited: 100 requests per 15 minutes
 
 ### Manual Auth Service Override (Rare)
 ```tsx
@@ -685,6 +741,8 @@ See MIGRATION_V2.md in the auth service repo for detailed migration guide.
 - ✅ **Automatic OAuth code detection** - No more manual `useEffect` for OAuth callbacks!
 - ✅ Hook automatically processes `?code=` parameter from URL
 - ✅ Duplicate login prevention built-in
+- ✅ **New `/token` endpoint** - Third-party apps can fetch Teamwork API token server-to-server
+- ✅ GraphQL/serverless function support for Teamwork API integration
 - ✅ Updated documentation with localhost shared key (`dev_localhost_shared`)
 - ✅ Comprehensive migration guide for existing apps
 - ✅ Common troubleshooting issues table

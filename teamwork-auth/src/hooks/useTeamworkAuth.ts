@@ -105,7 +105,6 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
       refreshToken();
     }, refreshTime);
 
-    console.log(`Access token stored, expires in ${expiresIn}s, refresh scheduled in ${refreshTime / 1000}s`);
   }, []);
 
   /**
@@ -127,15 +126,12 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
   const refreshToken = useCallback(async () => {
     // If a refresh is already in progress, wait for it
     if (refreshInProgressRef.current) {
-      console.log('Refresh already in progress, waiting...');
       return refreshInProgressRef.current;
     }
 
     // Start new refresh
     const refreshPromise = (async () => {
       try {
-        console.log('Refreshing access token...');
-
         const response = await fetch(`${authServiceUrl}/.netlify/functions/refresh`, {
           method: "POST",
           headers: getAuthHeaders(domainKey),
@@ -150,8 +146,6 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
 
         // Store new access token
         storeAccessToken(data.accessToken, data.expiresIn);
-
-        console.log('Access token refreshed successfully');
       } catch (err) {
         console.error('Token refresh failed:', err);
         // Clear auth state on refresh failure
@@ -176,7 +170,6 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
     // Prevent code reuse (OAuth codes are single-use)
     const previousCode = localStorage.getItem("maven_sso_code");
     if (previousCode === JSON.stringify(code)) {
-      console.log('OAuth code already used, skipping duplicate login attempt');
       return { user: null };
     }
 
@@ -451,13 +444,11 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
       // Prevent duplicate login attempts
       const previousCode = localStorage.getItem("maven_sso_code");
       if (previousCode === JSON.stringify(code)) {
-        console.log('OAuth code already processed, skipping duplicate login attempt');
         return;
       }
 
-      console.log('Detected OAuth code, logging in automatically...');
-      login(code).catch((error) => {
-        console.error('Auto-login failed:', error);
+      login(code).catch(() => {
+        // Auto-login failed, user can retry manually
       });
     }
   }, [isAuthenticated, login]);
