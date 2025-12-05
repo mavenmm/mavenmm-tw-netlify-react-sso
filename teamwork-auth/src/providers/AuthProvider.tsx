@@ -1,5 +1,4 @@
-import { useEffect, createContext, useContext, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, createContext, useContext, useRef, useState } from "react";
 import { Login } from "../components/Login";
 import { useTeamworkAuth, type TeamworkAuthConfig } from "../hooks/useTeamworkAuth";
 import type { User, AuthContextType } from "../types";
@@ -27,10 +26,14 @@ export default function AuthProvider({
   const { user, setUser, logout, loading, isAuthenticated, login, getAccessToken } =
     useTeamworkAuth(authConfig);
 
-  // Get the code from the URL for the teamwork login flow
-  const location = useLocation();
-  const params = location.search;
-  const code = new URLSearchParams(params).get("code");
+  // Get the code from the URL for the teamwork login flow (framework-agnostic)
+  const [code, setCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Read OAuth code from URL on mount (works with any framework)
+    const params = new URLSearchParams(window.location.search);
+    setCode(params.get("code"));
+  }, []);
 
   const value = { user, logout, loading, isAuthenticated, getAccessToken };
 
