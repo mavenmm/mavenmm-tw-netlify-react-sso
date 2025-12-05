@@ -127,10 +127,9 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
     };
 
     // Set cookie domain for cross-port/subdomain sharing
-    if (isLocalhost) {
-      // localhost needs explicit domain to share cookies across ports
-      cookieOptions.domain = "localhost";
-    } else if (domainValidation.domain?.environment === 'production') {
+    // Note: For localhost, we don't set domain - let the browser handle it
+    // Setting domain="localhost" explicitly can cause issues in some browsers
+    if (!isLocalhost && domainValidation.domain?.environment === 'production') {
       const domain = domainValidation.domain.domain;
       if (domain.includes('mavenmm.com')) {
         cookieOptions.domain = '.mavenmm.com';
