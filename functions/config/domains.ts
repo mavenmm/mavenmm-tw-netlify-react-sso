@@ -56,11 +56,11 @@ export function getDomainRegistry(): DomainConfig[] {
     createDomain('https://admin.mavenmm.com', 'DOMAIN_KEY_ADMIN', 'dmk_dev_admin_replace_in_prod', 'production', 'Admin dashboard'),
     createDomain('https://dashboard.mavenmm.com', 'DOMAIN_KEY_DASHBOARD', 'dmk_dev_dashboard_replace_in_prod', 'production', 'Analytics dashboard'),
     createDomain('https://home.mavenmm.com', 'DOMAIN_KEY_HOME', 'dmk_dev_home_replace_in_prod', 'production', 'Home/Landing page'),
+    createDomain('https://daily-pulse-check.mavenmm.com', 'DOMAIN_KEY_DAILY_PULSE', 'dmk_prod_daily_pulse_replace', 'production', 'Daily Pulse Check'),
 
     // ===== Staging (*.netlify.app) =====
     createDomain('https://maven-home.netlify.app', 'DOMAIN_KEY_MAVEN_HOME', 'dmk_staging_maven_home', 'staging', 'Maven Home - Netlify staging'),
     createDomain('https://teamfeedback.netlify.app', 'DOMAIN_KEY_TEAMFEEDBACK', 'dmk_staging_teamfeedback', 'staging', 'Team Feedback - Netlify staging'),
-    createDomain('https://daily-pulse-check.netlify.app', 'DOMAIN_KEY_DAILY_PULSE', 'dmk_staging_daily_pulse', 'staging', 'Daily Pulse Check - Netlify staging'),
 
     // ===== Development (localhost) =====
     // All localhost ports share the same key for simplicity
