@@ -60,6 +60,7 @@ export function getDomainRegistry(): DomainConfig[] {
     // ===== Staging (*.netlify.app) =====
     createDomain('https://maven-home.netlify.app', 'DOMAIN_KEY_MAVEN_HOME', 'dmk_staging_maven_home', 'staging', 'Maven Home - Netlify staging'),
     createDomain('https://teamfeedback.netlify.app', 'DOMAIN_KEY_TEAMFEEDBACK', 'dmk_staging_teamfeedback', 'staging', 'Team Feedback - Netlify staging'),
+    createDomain('https://daily-pulse-check.netlify.app', 'DOMAIN_KEY_DAILY_PULSE', 'dmk_staging_daily_pulse', 'staging', 'Daily Pulse Check - Netlify staging'),
 
     // ===== Development (localhost) =====
     // All localhost ports share the same key for simplicity
