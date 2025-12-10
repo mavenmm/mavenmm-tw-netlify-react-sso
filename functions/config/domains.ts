@@ -61,6 +61,7 @@ export function getDomainRegistry(): DomainConfig[] {
     // ===== Staging (*.netlify.app) =====
     createDomain('https://maven-home.netlify.app', 'DOMAIN_KEY_MAVEN_HOME', 'dmk_staging_maven_home', 'staging', 'Maven Home - Netlify staging'),
     createDomain('https://teamfeedback.netlify.app', 'DOMAIN_KEY_TEAMFEEDBACK', 'dmk_staging_teamfeedback', 'staging', 'Team Feedback - Netlify staging'),
+    createDomain('https://maven-job-tracker.netlify.app', 'DOMAIN_KEY_JOB_TRACKER', 'dmk_staging_job_tracker', 'staging', 'Job Tracker - Netlify staging'),
 
     // ===== Development (localhost) =====
     // All localhost ports share the same key for simplicity
@@ -68,6 +69,7 @@ export function getDomainRegistry(): DomainConfig[] {
     createDomain('http://localhost:5173', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 5173 (Vite)'),
     createDomain('http://localhost:5174', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 5174'),
     createDomain('http://localhost:8080', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 8080'),
+    createDomain('http://localhost:8888', 'DEV_KEY', 'dev_localhost_shared', 'development', 'Local development - port 8888 (Netlify Dev)'),
   ];
 
   return defaultRegistry;
