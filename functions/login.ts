@@ -122,7 +122,7 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days
       secure: !isLocalhost, // HTTPS only in production
-      sameSite: isLocalhost ? "lax" : "strict", // More secure in production
+      sameSite: "lax", // Lax required for cross-subdomain SSO navigation
     };
 
     // Set cookie domain for cross-port/subdomain sharing
