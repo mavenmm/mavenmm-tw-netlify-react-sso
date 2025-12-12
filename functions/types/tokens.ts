@@ -27,8 +27,11 @@ export interface RefreshTokenPayload {
   /** User ID from Teamwork */
   userId: string;
 
-  /** Teamwork permanent API token (encrypted) */
+  /** Teamwork OAuth access token */
   accessToken: string;
+
+  /** Teamwork OAuth refresh token (used to get new access tokens when expired) */
+  teamworkRefreshToken?: string;
 
   /** Token type identifier */
   type: 'refresh';

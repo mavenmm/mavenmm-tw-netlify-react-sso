@@ -31,7 +31,12 @@ function generateJti(): string {
 /**
  * Create a pair of access and refresh tokens
  */
-export function createTokenPair(userId: string, teamworkAccessToken: string, rotation: number = 0): TokenPair {
+export function createTokenPair(
+  userId: string,
+  teamworkAccessToken: string,
+  rotation: number = 0,
+  teamworkRefreshToken?: string
+): TokenPair {
   const JWT_SECRET = process.env.JWT_KEY;
   const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_KEY || JWT_SECRET; // Separate secret for refresh tokens
 
@@ -50,10 +55,11 @@ export function createTokenPair(userId: string, teamworkAccessToken: string, rot
     jti: accessJti,
   };
 
-  // Refresh token payload (includes Teamwork token)
+  // Refresh token payload (includes Teamwork tokens)
   const refreshPayload: Omit<RefreshTokenPayload, 'iat' | 'exp'> = {
     userId,
-    accessToken: teamworkAccessToken, // Encrypted in JWT
+    accessToken: teamworkAccessToken,
+    teamworkRefreshToken, // Store Teamwork refresh token to get new access tokens
     type: 'refresh',
     jti: refreshJti,
     rotation,
@@ -185,10 +191,12 @@ export function rotateRefreshToken(oldRefreshToken: string): TokenPair | null {
   blacklistToken(payload.jti, 'rotation', payload.userId, payload.exp);
 
   // Create new token pair with incremented rotation counter
+  // Pass through the Teamwork refresh token so it can be used to get new access tokens
   const newTokenPair = createTokenPair(
     payload.userId,
     payload.accessToken,
-    payload.rotation + 1
+    payload.rotation + 1,
+    payload.teamworkRefreshToken
   );
 
   logger.info('Refresh token rotated', {

@@ -1,7 +1,8 @@
 import type { HandlerEvent, HandlerContext, Handler } from "@netlify/functions";
 import { getCorsHeaders, handlePreflight, validateOrigin } from "./middleware/cors";
 import { validateDomain, getDomainValidationErrorResponse } from "./middleware/validateDomain";
-import { verifyAccessToken, verifyRefreshToken } from "./utils/tokenManager";
+import { verifyAccessToken, verifyRefreshToken, createTokenPair } from "./utils/tokenManager";
+import { refreshTeamworkToken } from "./utils/teamworkTokenRefresh";
 import { logger } from "./utils/logger";
 import { checkRateLimit, getRateLimitHeaders } from "./middleware/rateLimit";
 import axios from "axios";
@@ -159,21 +160,31 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // Fetch fresh user data from Teamwork API
-    try {
+    let teamworkAccessToken = refreshPayload.accessToken;
+    let teamworkRefreshToken = refreshPayload.teamworkRefreshToken;
+
+    // Helper function to fetch user from Teamwork
+    const fetchTeamworkUser = async (token: string) => {
       const response = await axios.get(
         'https://www.teamwork.com/launchpad/v1/account.json',
         {
           headers: {
-            'Authorization': `Bearer ${refreshPayload.accessToken}`,
+            'Authorization': `Bearer ${token}`,
           },
         }
       );
+      return response.data;
+    };
 
-      if (!response.data?.user) {
+    try {
+      // First attempt with current token
+      let data = await fetchTeamworkUser(teamworkAccessToken);
+
+      if (!data?.user) {
         throw new Error('No user data in Teamwork API response');
       }
 
-      const user: User = response.data.user;
+      const user: User = data.user;
 
       logger.debug("User data fetched successfully", {
         userId: user.id,
@@ -193,9 +204,125 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         }),
       };
     } catch (apiError: any) {
+      const status = apiError.response?.status;
+
+      // If 401, try to refresh the Teamwork token
+      if (status === 401 && teamworkRefreshToken) {
+        logger.info("Teamwork access token expired, attempting refresh", {
+          userId: refreshPayload.userId,
+        });
+
+        const refreshResult = await refreshTeamworkToken(teamworkRefreshToken);
+
+        if (refreshResult.success && refreshResult.accessToken) {
+          teamworkAccessToken = refreshResult.accessToken;
+
+          // If Teamwork returned a new refresh token, use it
+          if (refreshResult.refreshToken) {
+            teamworkRefreshToken = refreshResult.refreshToken;
+          }
+
+          // Retry the API call with the new token
+          try {
+            const data = await fetchTeamworkUser(teamworkAccessToken);
+
+            if (!data?.user) {
+              throw new Error('No user data in Teamwork API response after token refresh');
+            }
+
+            const user: User = data.user;
+
+            logger.info("User data fetched successfully after token refresh", {
+              userId: user.id,
+              domain: domainValidation.domain?.domain,
+            });
+
+            // Create new token pair with updated Teamwork tokens
+            const newTokenPair = createTokenPair(
+              refreshPayload.userId,
+              teamworkAccessToken,
+              refreshPayload.rotation + 1,
+              teamworkRefreshToken
+            );
+
+            // Determine cookie settings
+            const origin = event.headers.origin || event.headers.referer || "";
+            const isLocalhost = origin.includes("localhost") || origin.includes("127.0.0.1");
+
+            const cookieOptions: cookie.SerializeOptions = {
+              httpOnly: true,
+              secure: !isLocalhost,
+              sameSite: "lax",
+              path: "/",
+              maxAge: 7 * 24 * 60 * 60, // 7 days
+            };
+
+            // Set cookie domain for production
+            if (!isLocalhost && domainValidation.domain?.environment === 'production') {
+              const domain = domainValidation.domain.domain;
+              if (domain.includes('mavenmm.com')) {
+                cookieOptions.domain = '.mavenmm.com';
+              }
+            }
+
+            const newRefreshCookie = cookie.serialize(
+              "maven_refresh_token",
+              newTokenPair.refreshToken,
+              cookieOptions
+            );
+
+            return {
+              statusCode: 200,
+              headers: {
+                ...corsHeaders,
+                ...getRateLimitHeaders(rateLimit),
+                "Content-Type": "application/json",
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+                "Set-Cookie": newRefreshCookie, // Update cookie with new Teamwork tokens
+              },
+              body: JSON.stringify({
+                user,
+                tokenRefreshed: true, // Signal to client that tokens were updated
+              }),
+            };
+          } catch (retryError: any) {
+            logger.error("Failed to fetch user after token refresh", {
+              error: retryError.message,
+              status: retryError.response?.status,
+            });
+          }
+        } else {
+          logger.warn("Failed to refresh Teamwork token", {
+            error: refreshResult.error,
+          });
+        }
+      }
+
+      // No refresh token available or refresh failed
+      if (status === 401) {
+        logger.warn("Teamwork token expired and cannot be refreshed", {
+          hasRefreshToken: !!teamworkRefreshToken,
+          userId: refreshPayload.userId,
+        });
+
+        return {
+          statusCode: 401,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            error: "Teamwork session expired",
+            message: "Your Teamwork session has expired. Please log in again.",
+            requiresReauth: true,
+          }),
+        };
+      }
+
+      // Other API errors
       logger.error("Failed to fetch user from Teamwork API", {
         error: apiError.message,
-        status: apiError.response?.status,
+        status,
       });
 
       return {

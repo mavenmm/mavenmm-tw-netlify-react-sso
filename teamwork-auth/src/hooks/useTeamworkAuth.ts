@@ -70,6 +70,24 @@ function getAuthHeaders(domainKey?: string): Record<string, string> {
   return headers;
 }
 
+/**
+ * Validate that user data has required fields
+ */
+function isValidUserData(user: unknown): user is User {
+  if (!user || typeof user !== 'object') return false;
+  const u = user as Record<string, unknown>;
+  // id can be string or number depending on API response
+  const hasValidId = typeof u.id === 'string' || typeof u.id === 'number';
+  return (
+    hasValidId &&
+    typeof u.firstName === 'string' &&
+    typeof u.lastName === 'string' &&
+    typeof u.email === 'string' &&
+    u.firstName.length > 0 &&
+    u.email.length > 0
+  );
+}
+
 export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
   // Auto-detect auth service URL if not provided
   const authServiceUrl = config.authServiceUrl || detectAuthServiceUrl();
@@ -203,7 +221,10 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
       // Store access token
       storeAccessToken(data.accessToken, data.expiresIn);
 
-      // Store user data
+      // Validate and store user data
+      if (!isValidUserData(data.user)) {
+        throw new Error("Login returned incomplete user data");
+      }
       setUser(data.user);
       setIsAuthenticated(true);
       localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
@@ -239,11 +260,13 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.user) {
+        if (isValidUserData(data.user)) {
           // Store fresh user data
           setUser(data.user);
           localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
           return data.user;
+        } else if (data.user) {
+          console.warn('Received incomplete user data from server');
         }
       }
     } catch (error) {
@@ -278,17 +301,25 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
 
             // Try to restore user data from localStorage first
             const prevUser = localStorage.getItem("maven_sso_user");
+            let restoredFromCache = false;
             if (prevUser) {
               try {
                 const userData = JSON.parse(prevUser);
-                setUser(userData);
+                if (isValidUserData(userData)) {
+                  setUser(userData);
+                  restoredFromCache = true;
+                } else {
+                  // Invalid/incomplete user data in localStorage, clear it
+                  localStorage.removeItem("maven_sso_user");
+                }
               } catch (error) {
                 console.error('Failed to parse user data:', error);
+                localStorage.removeItem("maven_sso_user");
               }
             }
 
-            // If no user data in localStorage, fetch from server
-            if (!prevUser) {
+            // If no valid user data in localStorage, fetch from server
+            if (!restoredFromCache) {
               await fetchUserData();
             }
 
@@ -320,17 +351,25 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
 
             // Try to restore user data from localStorage first
             const prevUser = localStorage.getItem("maven_sso_user");
+            let restoredFromCache = false;
             if (prevUser) {
               try {
                 const userData = JSON.parse(prevUser);
-                setUser(userData);
+                if (isValidUserData(userData)) {
+                  setUser(userData);
+                  restoredFromCache = true;
+                } else {
+                  // Invalid/incomplete user data in localStorage, clear it
+                  localStorage.removeItem("maven_sso_user");
+                }
               } catch (error) {
                 console.error('Failed to parse user data:', error);
+                localStorage.removeItem("maven_sso_user");
               }
             }
 
-            // If no user data in localStorage, fetch from server
-            if (!prevUser) {
+            // If no valid user data in localStorage, fetch from server
+            if (!restoredFromCache) {
               await fetchUserData();
             }
 

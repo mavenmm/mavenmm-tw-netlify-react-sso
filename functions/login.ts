@@ -100,9 +100,17 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
 
     const user: User = data.user;
     const teamworkAccessToken = data.access_token;
+    const teamworkRefreshToken = data.refresh_token; // Teamwork OAuth refresh token (if provided)
+
+    logger.debug("Teamwork OAuth response received", {
+      hasAccessToken: !!teamworkAccessToken,
+      hasRefreshToken: !!teamworkRefreshToken,
+      userId: user.id,
+    });
 
     // Create access token (15min) and refresh token (7 days)
-    const tokenPair = createTokenPair(user.id, teamworkAccessToken);
+    // Include Teamwork refresh token so we can get new access tokens when they expire
+    const tokenPair = createTokenPair(user.id, teamworkAccessToken, 0, teamworkRefreshToken);
 
     // Determine if we're in development (localhost) by checking origin/redirect
     const requestOrigin = event.headers.origin || event.headers.referer || "";
