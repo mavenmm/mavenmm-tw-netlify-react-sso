@@ -160,15 +160,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     // Fetch fresh user data from Teamwork API
     try {
-      // Debug: Log token info (first/last chars only for security)
-      const token = refreshPayload.accessToken;
-      logger.debug("Teamwork token debug", {
-        tokenLength: token?.length,
-        tokenStart: token?.substring(0, 10),
-        tokenEnd: token?.substring(token.length - 10),
-        tokenType: typeof token,
-      });
-
       const response = await axios.get(
         'https://www.teamwork.com/launchpad/v1/account.json',
         {
