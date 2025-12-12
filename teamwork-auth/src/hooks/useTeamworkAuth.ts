@@ -494,7 +494,13 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
 
   // Check authentication on mount
   useEffect(() => {
-    checkAuth();
+    // Skip checkAuth if there's an OAuth code in URL - login will handle it
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasOAuthCode = urlParams.has('code');
+
+    if (!hasOAuthCode) {
+      checkAuth();
+    }
 
     // Cleanup on unmount
     return () => {
