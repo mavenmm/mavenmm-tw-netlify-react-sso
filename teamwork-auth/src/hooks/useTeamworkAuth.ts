@@ -227,6 +227,7 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
       }
       setUser(data.user);
       setIsAuthenticated(true);
+      setLoading(false);
       localStorage.setItem("maven_sso_user", JSON.stringify(data.user));
 
       // Clean up URL
@@ -236,6 +237,7 @@ export function useTeamworkAuth(config: TeamworkAuthConfig = {}) {
     } catch (err) {
       // Clear the code on error so it can be retried
       localStorage.removeItem("maven_sso_code");
+      setLoading(false);
       throw new Error("Failed to log in");
     }
   };
