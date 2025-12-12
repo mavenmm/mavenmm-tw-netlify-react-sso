@@ -121,7 +121,7 @@ const handler: Handler = async (event: HandlerEvent, _: HandlerContext) => {
     const cookieOptions: cookie.SerializeOptions = {
       httpOnly: true,
       secure: !isLocalhost,
-      sameSite: isLocalhost ? "lax" : "strict",
+      sameSite: "lax", // Lax required for cross-subdomain SSO navigation
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     };

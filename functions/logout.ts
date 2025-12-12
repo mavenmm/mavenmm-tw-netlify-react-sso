@@ -88,7 +88,7 @@ const handler: Handler = async (
     const cookieOptions: cookie.SerializeOptions = {
       httpOnly: true,
       secure: !isLocalhost,
-      sameSite: isLocalhost ? "lax" : "strict",
+      sameSite: "lax", // Lax required for cross-subdomain SSO navigation
       path: "/",
       expires: new Date(0), // Expire immediately
     };
